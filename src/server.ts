@@ -5,8 +5,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Game } from './game.ts';
-import { DIRECTIONS, TUNING, isRecord, readSettings } from './rules.ts';
-import type { Direction, ServerMessage } from './rules.ts';
+import { DIRECTIONS, TUNING, isRecord, readSettings, CLASS_KINDS } from './rules.ts';
+import type { Direction, ServerMessage, ClassKind } from './rules.ts';
 
 const port = Number(process.env.PORT ?? 3000);
 const dist = new URL('../dist/', import.meta.url);
@@ -104,9 +104,13 @@ sockets.on('connection', (socket, request) => {
           else respond('Invalid direction.');
           return;
         }
-        case 'use-item':
-          game.useItem(id, Date.now());
+        case 'ability':
+        case 'use-item': // older pages still send this for Space
+          game.useAbility(id, Date.now());
           return;
+        case 'class':
+          error = CLASS_KINDS.some(kind => kind === command.role) ? game.chooseClass(id, command.role as ClassKind) : 'Invalid class.';
+          break;
         case 'crown-bluff':
           error = game.crownBluff(id, Date.now());
           break;

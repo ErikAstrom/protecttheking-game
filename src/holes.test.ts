@@ -112,9 +112,9 @@ test('a king falling in on match point ends the match', () => {
   assert.equal(game.state.phase, 'finished');
 });
 
-test('a strength push can shove an enemy into the water', () => {
+test('a Bodyguard push can shove an enemy into the water', () => {
   const { red, blue, run } = match({ movement: 'classic' });
-  Object.assign(red, { x: 26, y: 30, strengthUntil: 60_000 });
+  Object.assign(red, { x: 26, y: 30, role: 'bodyguard' });
   Object.assign(blue, { x: 27, y: 30 });
   run(red.id, 'right', 100);
   assert.equal(blue.outCause, 'drowned');

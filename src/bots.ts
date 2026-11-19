@@ -1,7 +1,8 @@
 import { castShot } from './gun.ts';
+import { abilityStatus, hasStrength, isCloaked } from './classes.ts';
 import { boardOutline, onBoard } from './board-shape.ts';
 import { canTraverse, levelAt } from './walkway.ts';
-import { DIRECTIONS, GUN, TUNING, isFractional } from './rules.ts';
+import { ABILITY, DIRECTIONS, GUN, TUNING, isFractional } from './rules.ts';
 import type { Direction, Player, Point, State } from './rules.ts';
 
 const BOT = { thinkMs: 250, threatRange: 7, itemRange: 4, holeClearance: 0.75, turnLeadMs: 100 };
@@ -32,7 +33,6 @@ function routeTo(state: State, bot: Player, goal: Point, quarry?: Player): Point
   for (const other of state.players) {
     if (other !== bot && other !== quarry && !other.respawnAt) blocked[key(tile(other))] = 1;
   }
-  for (const trap of state.traps) if (trap.team !== bot.team) blocked[key(tile(trap))] = 1;
 
   const parents = new Int32Array(size * size).fill(-1);
   const queue = new Int32Array(size * size);
@@ -87,18 +87,19 @@ export class BotPilot {
     this.plans.clear();
   }
 
-  control(state: State, bot: Player, velocity: Point | undefined): { direction: Direction | null; useItem: boolean } {
+  control(state: State, bot: Player, velocity: Point | undefined): { direction: Direction | null; useAbility: boolean } {
     let plan = this.plans.get(bot.id);
     const think = !plan || plan.at <= state.now || plan.portalTrips !== bot.portalTrips || plan.deaths !== bot.deaths;
     if (think || !plan) {
-      const active = state.players.filter(player => !player.respawnAt);
+      // Cloaked enemy spies are invisible to bots too.
+      const active = state.players.filter(player => !player.respawnAt && (player.team === bot.team || !isCloaked(player, state.now)));
       const allyKing = active.find(player => player.team === bot.team && player.king);
       const enemies = active.filter(player => player.team !== bot.team);
       const enemyKing = enemies.find(player => player.king);
       const threat = allyKing && enemies.reduce<Player | undefined>((closest, enemy) =>
         !enemy.king && distance(allyKing, enemy) < (closest ? distance(allyKing, closest) : BOT.threatRange) ? enemy : closest, undefined);
       const intercept = allyKing && threat ? { x: (allyKing.x + threat.x) / 2, y: (allyKing.y + threat.y) / 2 } : undefined;
-      const push = threat && (bot.strengthUntil > state.now || bot.inventory[0] === 'strength');
+      const push = threat && hasStrength(bot);
       const quarry = intercept ? (push ? threat : undefined) : enemyKing;
       const goal = quarry ?? intercept;
       const route = goal ? routeTo(state, bot, goal, quarry) : [];
@@ -112,23 +113,21 @@ export class BotPilot {
     const waypoint = plan.route[0] ?? (plan.goal &&
       here.x === Math.round(plan.goal.x) && here.y === Math.round(plan.goal.y) ? plan.goal : undefined);
     const direction = waypoint ? directionTo(bot, waypoint, fractional, velocity) : null;
-    return { direction, useItem: think && this.shouldUseItem(state, bot, direction) };
+    return { direction, useAbility: think && this.shouldUseAbility(state, bot, direction) };
   }
 
-  private shouldUseItem(state: State, bot: Player, direction: Direction | null): boolean {
-    const kind = bot.inventory[0];
-    if (!kind) return false;
-    const enemies = state.players.filter(player => player.team !== bot.team && !player.respawnAt);
-    if (kind === 'strength' || kind === 'slow') {
-      return (kind !== 'strength' || bot.strengthUntil <= state.now) &&
-        enemies.some(enemy => !enemy.king && distance(bot, enemy) <= BOT.itemRange);
-    }
-    if (kind === 'speed') return direction !== null && bot.paceUntil <= state.now;
-    if (kind !== 'gun') return false;
+  private shouldUseAbility(state: State, bot: Player, direction: Direction | null): boolean {
+    if (abilityStatus(bot, state.now).state !== 'ready') return false;
+    const enemies = state.players.filter(player => player.team !== bot.team && !player.respawnAt && !isCloaked(player, state.now));
+    const near = (range: number) => enemies.some(enemy => distance(bot, enemy) <= range);
+    // Kings and hunters sprint while moving; spies cloak when enemies are close; strategists vault when bumping into a crowd.
+    if (bot.king || bot.role === 'hunter') return direction !== null;
+    if (bot.role === 'spy') return near(BOT.itemRange * 1.5);
+    if (bot.role === 'strategist') return near(BOT.itemRange / 2);
+    if (bot.role !== 'wizard') return false;
     const facing = direction ? DIRECTIONS[direction] : bot.facing;
     const level = levelAt(state.walkway, bot);
-    return !!castShot(bot, facing, bot.team, state.players.filter(player => player !== bot && !player.respawnAt &&
-      levelAt(state.walkway, player) === level),
+    return !!castShot(bot, facing, bot.team, enemies.filter(player => levelAt(state.walkway, player) === level),
       point => {
         const { x, y } = tile(point);
         const { size } = state.settings;
@@ -136,6 +135,6 @@ export class BotPilot {
         return levelAt(state.walkway, point) !== level ||
           !onBoard(state.outline ?? boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
       },
-      GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius).hit;
+      ABILITY.boltRangeTiles, GUN.stepTiles, GUN.hitRadius, true).hit;
   }
 }

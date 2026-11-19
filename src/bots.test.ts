@@ -105,16 +105,17 @@ for (const movement of ['classic', 'ice'] as const) {
   });
 }
 
-test('a bot diverts to defend its king and uses strength through normal item rules', () => {
+test('a Bodyguard bot diverts to defend its king and shoves the threat with passive strength', () => {
   const { game, bot } = setupBot('classic');
   Object.assign(player(game, 'b1'), { x: 10, y: 10 });
   Object.assign(player(game, 'r2'), { x: 14, y: 10 });
   Object.assign(player(game, 'r1'), { x: 1, y: 1 });
-  Object.assign(bot, { x: 10, y: 12, inventory: ['strength'] });
+  Object.assign(bot, { x: 10, y: 12, role: 'bodyguard' });
+  const threat = player(game, 'r2');
+  const threatStart = threat.x;
   for (let now = 1025; now < 1600; now += TUNING.tickMs) game.tick(now);
-  assert.ok(bot.x > 10);
-  assert.equal(bot.used, 1);
-  assert.ok(bot.strengthUntil > 1600);
+  assert.ok(bot.x > 10, 'moves to intercept');
+  assert.notEqual(threat.x, threatStart, 'the threat got shoved');
 });
 
 test('a bot navigates around a wall rather than walking into it', () => {

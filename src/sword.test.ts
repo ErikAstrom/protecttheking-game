@@ -42,7 +42,7 @@ function match(movement: Movement = 'classic') {
   game.state.movementTerrain = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
-  Object.assign(red, { x: 20, y: 30, inventory: ['sword'] });
+  Object.assign(red, { x: 20, y: 30 });
   Object.assign(blue, { x: 24, y: 30 });
   Object.assign(redKing, { x: 10, y: 40 });
   Object.assign(blueKing, { x: 40, y: 40 });
@@ -54,17 +54,19 @@ function match(movement: Movement = 'classic') {
   return { game, redKing, blueKing, red, blue, run, time: () => now };
 }
 
-test('Space draws the sword for ten seconds and uses up the item', () => {
-  const { game, red } = match();
-  game.useItem(red.id, 1000);
-  assert.equal(red.swordUntil, 1000 + SWORD.activeMs);
-  assert.deepEqual(red.inventory, []);
+test('touching a sword pickup draws it for ten seconds, leaving Space for the class ability', () => {
+  const { game, red, run } = match();
+  game.state.pickups = [{ x: 21, y: 30, kind: 'sword' }];
+  run(red.id, 'right', 100);
+  assert.ok(red.swordUntil > 1000 && red.swordUntil <= 1100 + SWORD.activeMs);
+  assert.equal(game.state.pickups.length, 0);
+  assert.equal(red.abilityReadyAt, 0, 'class ability untouched');
 });
 
 for (const movement of ['classic', 'ice'] as const) {
   test(`${movement}: running into an enemy with the sword out chops them, and they respawn later`, () => {
     const { game, red, blue, run } = match(movement);
-    game.useItem(red.id, 1000);
+    red.swordUntil = 1000 + SWORD.activeMs;
     run(red.id, 'right', 800);
     assert.equal(blue.outCause, 'chopped');
     assert.equal(red.kills, 1);
@@ -79,7 +81,7 @@ for (const movement of ['classic', 'ice'] as const) {
 
 test('an enemy who runs into a drawn sword is chopped too', () => {
   const { game, red, blue, run } = match();
-  game.useItem(red.id, 1000);
+  red.swordUntil = 1000 + SWORD.activeMs;
   Object.assign(blue, { x: 23, y: 30 });
   run(blue.id, 'left', 400);
   assert.equal(blue.outCause, 'chopped');
@@ -89,7 +91,7 @@ test('unlimited chops while it is out, none after ten seconds', () => {
   const { game, red, blue, run, time } = match();
   const [, , , , extra] = game.state.players;
   assert.equal(extra, undefined);
-  game.useItem(red.id, 1000);
+  red.swordUntil = 1000 + SWORD.activeMs;
   for (let round = 0; round < 3; round++) {
     Object.assign(blue, { x: red.x + 1, y: red.y, respawnAt: 0, outCause: null });
     run(red.id, null, 50);
@@ -104,7 +106,7 @@ test('unlimited chops while it is out, none after ten seconds', () => {
 
 test('the sword does nothing to kings: touching the enemy king is still a normal capture', () => {
   const { game, red, blueKing, run } = match();
-  game.useItem(red.id, 1000);
+  red.swordUntil = 1000 + SWORD.activeMs;
   Object.assign(blueKing, { x: red.x + 1, y: red.y });
   run(red.id, null, 50);
   assert.equal(blueKing.respawnAt, 0, 'the king is not chopped by reach');
@@ -117,7 +119,7 @@ test('teammates are safe from your sword', () => {
   const { game, red, redKing, run } = match();
   const mate = game.state.players.find(player => player.team === 'red' && player !== red && player !== redKing);
   assert.equal(mate, undefined, 'only one red non-king in a 2v2');
-  game.useItem(red.id, 1000);
+  red.swordUntil = 1000 + SWORD.activeMs;
   Object.assign(redKing, { x: red.x + 1, y: red.y });
   run(red.id, null, 50);
   assert.equal(redKing.respawnAt, 0);

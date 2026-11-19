@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReplayCue } from './audio.ts';
 import { boardOutline } from './board-shape.ts';
+import { drawCostume, drawFrozen } from './classfx.ts';
+import { hasStrength } from './classes.ts';
 import { drawHeldGun, drawShots } from './gunfx.ts';
 import { drawHeldSword, drawSlashes } from './swordfx.ts';
 import { drawBlackHole, drawStars } from './space-art.ts';
@@ -10,9 +12,9 @@ import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from 
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 import { levelAt, stairAxisAt, WALKWAY } from './walkway.ts';
 import { drawMovementTerrain } from './movement-terrain-art.ts';
-import { CROWN_BLUFF } from './rules.ts';
+import { CLASSES, CROWN_BLUFF } from './rules.ts';
 
-export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖', sword: '⚔' };
+export const GLYPHS: Record<ItemKind, string> = { sword: '⚔', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
 const PORTAL_COLOR = '#d4adff';
 const CHARACTER_SCALE = 1.25;
@@ -144,12 +146,6 @@ function draw(
     text('↻', p.x, p.y, 13, PORTAL_COLOR);
   }
 
-  for (const trap of scene.traps) {
-    if (levelAt(walkway, trap)) continue;
-    const p = project(trap.x, trap.y);
-    ellipse(p.x, p.y, Math.max(9, scale * 0.68), Math.max(5, scale * 0.4), '#a25be36c', COLORS[trap.team]);
-    text(GLYPHS.slow, p.x, p.y, 12, '#fff');
-  }
   const actors: { depth: number; draw: () => void }[] = [];
   if (walkway) {
     for (const section of walkway.branch ? [walkway, walkway.branch] : [walkway]) {
@@ -173,15 +169,6 @@ function draw(
         } });
       }
     }
-  }
-  for (const trap of scene.traps) {
-    const tier = levelAt(walkway, trap);
-    if (!tier || !walkway) continue;
-    actors.push({ depth: Math.round(trap.y) + 0.501, draw: () => {
-      const p = project(trap.x, trap.y, tier * tierHeight);
-      ellipse(p.x, p.y, Math.max(9, scale * 0.68), Math.max(5, scale * 0.4), '#a25be36c', COLORS[trap.team]);
-      text(GLYPHS.slow, p.x, p.y, 12, '#fff');
-    } });
   }
   for (const obstacle of board.obstacles) {
     actors.push({ depth: obstacle.y + 0.5, draw: () => {
@@ -233,11 +220,15 @@ function draw(
       ? { x: (target.x - player.x) * per, y: (target.y - player.y) * per } : { x: 0, y: 0 };
     const decoy = !replay && board.crownBluff?.decoyId === player.id && board.crownBluff.until > scene.now;
     const crowned = player.king || decoy;
-    const strong = player.strengthUntil > scene.now;
+    const strong = hasStrength(player);
+    const viewerTeam = board.players.find(candidate => candidate.id === id)?.team;
+    const cloaked = !replay && player.invisibleUntil > scene.now;
+    if (cloaked && player.team !== viewerTeam) continue; // enemy spies (and spectators' view) see nothing
+    const frozenFor = player.frozenUntil - scene.now;
     const r = Math.min(16, Math.max(6, scale * 0.53)) * CHARACTER_SCALE *
       (crowned ? 1.2 : 1) * (strong ? STRENGTH_SCALE : 1);
     const holder = board.players.find(candidate => candidate.id === player.id);
-    if (!replay && holder && !holder.king && holder.inventory[0] === 'gun') {
+    if (!replay && holder && !holder.king && holder.gunUntil > scene.now) {
       actors.push({ depth: depth + 0.001, draw: () =>
         drawHeldGun(ctx, (x, y, height = 0) => project(x, y, height + z), { x, y }, holder.facing, holder.id === id, r) });
     }
@@ -251,14 +242,18 @@ function draw(
       ellipse(p.x, p.y + 2, r * 1.35, r * 0.72, '#07171c8f', team);
       if (player.id === id) ellipse(p.x, p.y + 2, r * 1.12, r * 0.51, '#0000', '#fff');
       if (player.recoilUntil > scene.now) ellipse(p.x, p.y, r * 1.7, r * 0.88, '#ffffff20', '#ffffffaa');
-      if (strong || player.paceUntil > scene.now) {
-        const color = strong ? ITEMS.strength.color :
-          player.pace === 'speed' ? ITEMS.speed.color : ITEMS.slow.color;
+      if (player.pace === 'speed' && player.paceUntil > scene.now) {
+        const color = CLASSES.hunter.color;
         ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
       }
       const orca = player.team === 'blue';
       const drawAnimal = orca ? drawOrca : drawPenguin;
+      if (cloaked) ctx.globalAlpha = 0.35;
       drawAnimal(ctx, { at: p, r, team, king: crowned, you: player.id === id, motion, time });
+      // Kings (and Crown Bluff decoys) wear only the crown, so the decoy stays convincing.
+      if (!crowned) drawCostume(ctx, player.role, { at: p, r, motion, time, orca });
+      ctx.globalAlpha = 1;
+      if (frozenFor > 0) drawFrozen(ctx, p, r, frozenFor);
       if (decoy) text('DECOY', p.x, p.y + r + 8, 11, '#fff0b0');
     } });
   }

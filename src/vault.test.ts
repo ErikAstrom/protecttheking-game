@@ -12,9 +12,9 @@ function setup(movement: Movement, obstacles: Obstacle[] = []) {
   startActiveRound(game, 1000);
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
-  Object.assign(red, { x: 10, y: 10, inventory: ['vault'] });
-  game.useItem(red.id, 1000);
-  assert.deepEqual(red.inventory, []);
+  Object.assign(red, { x: 10, y: 10, role: 'strategist' });
+  game.useAbility(red.id, 1000); // Strategist ability: vault
+  assert.ok(red.vaultUntil > 1000);
   game.input(red.id, 'right');
   return { game, red, blue, blueKing };
 }

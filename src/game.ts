@@ -1,12 +1,13 @@
 import { BotPilot } from './bots.ts';
 import { boardOutline, onBoard } from './board-shape.ts';
+import { abilityCooldownMs, hasStrength, isCloaked, isFrozen } from './classes.ts';
 import { castShot } from './gun.ts';
 import { findChops } from './sword.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
 import { followsBoost, generateMovementTerrain, movementTerrainAt, terrainSpeed, TRAVERSAL } from './movement-terrain.ts';
-import { CROWN_BLUFF } from './rules.ts';
-import type { CrownBluff } from './rules.ts';
+import { CROWN_BLUFF, ABILITY, CLASSES, CLASS_KINDS } from './rules.ts';
+import type { CrownBluff, ClassKind } from './rules.ts';
 import { DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, SWORD, TEAMS, TUNING, WORLDS, enabledCommonItems, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
@@ -27,12 +28,13 @@ const BOT_ALIASES = [
   'Lara Craft', 'Ellen Ripcord', 'Sarah Conductor', 'RoboChop', 'Maximus Overdrive',
 ];
 
-function makePlayer(id: string, name: string, team: Team): Player {
+function makePlayer(id: string, name: string, team: Team, role: ClassKind = 'hunter'): Player {
   return {
-    id, name, team, x: 0, y: 0, king: false,
-    strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
+    id, name, team, x: 0, y: 0, king: false, role, abilityReadyAt: 0,
+    paceUntil: 0, pace: null, collected: 0, used: 0,
     sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, swordUntil: 0,
-    facing: homeFacing(team), gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
+    frozenUntil: 0, freezeImmuneUntil: 0, invisibleUntil: 0,
+    facing: homeFacing(team), gunUntil: 0, nextShotAt: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
   };
 }
 
@@ -40,7 +42,7 @@ export class Game {
   readonly state: State = {
     blackHole: null, movementTerrain: [],
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], slashes: [],
+    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], slashes: [],
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
@@ -121,7 +123,7 @@ export class Game {
         const offset = Math.floor(Math.random() * BOT_ALIASES.length);
         for (let i = 0; i < count; i++) {
           const alias = BOT_ALIASES[(offset + i) % BOT_ALIASES.length]!;
-          players.push({ ...makePlayer(`bot:${i + 1}`, `${alias} [BOT]`, red < blue ? 'red' : 'blue'), bot: true });
+          players.push({ ...makePlayer(`bot:${i + 1}`, `${alias} [BOT]`, red < blue ? 'red' : 'blue', CLASS_KINDS[i % CLASS_KINDS.length]), bot: true });
         }
       }
     }
@@ -145,7 +147,7 @@ export class Game {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
       blackHole: null, movementTerrain: [],
       players: this.state.players.filter(player => !player.bot),
-      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], slashes: [], result: null, replay: null, notice,
+      obstacles: [], pickups: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], slashes: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
     this.bots.reset();
@@ -174,31 +176,38 @@ export class Game {
     }
   }
 
-  useItem(id: string, now: number): void {
+  /** Lobby (or between rounds): pick a class. It applies from the next round start. */
+  chooseClass(id: string, role: ClassKind): string | undefined {
+    if (this.state.phase !== 'lobby' && this.state.phase !== 'between') return 'Pick your class in the lobby or between rounds.';
+    const player = this.state.players.find(candidate => candidate.id === id);
+    if (!player) return 'Join first.';
+    player.role = role;
+  }
+
+  /** Space: the king's sprint for kings, otherwise the player's class ability. */
+  useAbility(id: string, now: number): void {
     if (this.state.phase !== 'playing' || now >= this.state.deadline) return;
     const player = this.state.players.find(candidate => candidate.id === id);
-    if (!player || !alive(player)) return;
-    if (player.king && player.sprintReadyAt > now) return;
-    if (!player.king && player.inventory[0] === 'gun') {
-      this.fireGun(player, now);
-      return;
-    }
-    const kind = player.king ? 'speed' : player.inventory.shift();
-    if (!kind) return;
-    player.used++;
-    if (kind === 'strength') player.strengthUntil = now + TUNING.strengthMs;
-    else if (kind === 'vault') player.vaultUntil = now + TUNING.vaultMs;
-    else if (kind === 'sword') player.swordUntil = now + SWORD.activeMs;
-    else if (kind === 'speed') {
+    if (!player || !alive(player) || isFrozen(player, now)) return;
+    if (player.king) {
+      if (player.sprintReadyAt > now) return;
+      player.used++;
       player.pace = 'speed';
       player.paceUntil = now + TUNING.speedMs;
-      if (player.king) player.sprintReadyAt = player.paceUntil + TUNING.kingRechargeMs;
-    } else {
-      const trap = { x: player.x, y: player.y, team: player.team, expires: now + TUNING.trapLifetimeMs };
-      this.state.traps.push(trap);
-      const enemy = this.state.players.find(candidate => alive(candidate) && candidate.team !== trap.team && this.touches(candidate, trap));
-      if (enemy) this.checkTrap(enemy, now);
+      player.sprintReadyAt = player.paceUntil + TUNING.kingRechargeMs;
+      return;
     }
+    if (CLASSES[player.role].passive || player.abilityReadyAt > now) return;
+    player.used++;
+    player.abilityReadyAt = now + abilityCooldownMs(player);
+    if (player.role === 'hunter') {
+      player.pace = 'speed';
+      player.paceUntil = now + TUNING.speedMs;
+    } else if (player.role === 'strategist') player.vaultUntil = now + TUNING.vaultMs;
+    else if (player.role === 'spy') {
+      player.invisibleUntil = now + ABILITY.spyCloakMs;
+      player.abilityReadyAt = player.invisibleUntil + ABILITY.spyCooldownMs;
+    } else if (player.role === 'wizard') this.castFreezeBolt(player, now);
   }
 
   tick(now: number): void {
@@ -225,7 +234,6 @@ export class Game {
     const tilt = this.scheduledTilt;
     if (tilt && now >= tilt.startedAt && now < tilt.endsAt) this.state.tilt = tilt;
     else if (this.state.tilt) delete this.state.tilt;
-    this.state.traps = this.state.traps.filter(trap => trap.expires > now);
     this.state.shots = this.state.shots.filter(shot => now - shot.at < GUN.tracerMs);
     this.state.splashes = this.state.splashes.filter(splash => now - splash.at < HOLES.splashMs);
     this.state.slashes = this.state.slashes.filter(slash => now - slash.at < SWORD.slashMs);
@@ -238,10 +246,14 @@ export class Game {
     let attemptedMove = false;
     for (const player of ordered) {
       if (!alive(player)) continue;
+      if (isFrozen(player, now)) {
+        this.velocities.delete(player.id);
+        continue;
+      }
       if (player.bot && player.recoilUntil <= now) {
         const action = this.bots.control(this.state, player, this.velocities.get(player.id));
         this.input(player.id, action.direction);
-        if (action.useItem) this.useItem(player.id, now);
+        if (action.useAbility) this.useAbility(player.id, now);
       }
       const direction = this.inputs.get(player.id);
       const delta = direction ? DIRECTIONS[direction] : null;
@@ -277,6 +289,7 @@ export class Game {
     }
     if (attemptedMove) this.turn++;
     this.swingSwords(now);
+    this.autoFireGuns(now);
     this.recordReplayFrame(now);
   }
 
@@ -306,7 +319,7 @@ export class Game {
         const bluff = this.bluffs.get(player.team);
         if (player.team === team || !bluff || bluff.until <= state.now ||
             (!player.king && player.id !== bluff.decoyId)) return player;
-        return { ...player, king: true, sprintReadyAt: 0, inventory: [], swordUntil: 0, gunAmmo: 0, vaultUntil: 0 };
+        return { ...player, king: true, sprintReadyAt: 0, swordUntil: 0, gunUntil: 0, vaultUntil: 0 };
       }),
     };
   }
@@ -322,12 +335,12 @@ export class Game {
     const last = this.replayFrames.at(-1);
     if (!final && last && now - last.now < REPLAY.sampleMs) return;
     if (last?.now === now) this.replayFrames.pop();
-    const { players, pickups, traps, blackHole, tilt } = this.state;
+    const { players, pickups, blackHole, tilt } = this.state;
     this.replayFrames.push({
-      now, pickups: pickups.slice(), traps: traps.slice(), blackHole,
+      now, pickups: pickups.slice(), blackHole,
       ...(tilt ? { tilt } : {}),
-      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt, drop }) =>
-        ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt, ...(drop ? { drop } : {}) })),
+      players: players.map(({ id, team, king, role, x, y, paceUntil, pace, recoilUntil, portalTrips, respawnAt, drop, frozenUntil, invisibleUntil }) =>
+        ({ id, team, king, role, x, y, paceUntil, pace, recoilUntil, portalTrips, respawnAt, frozenUntil, invisibleUntil, ...(drop ? { drop } : {}) })),
     });
     while ((this.replayFrames[0]?.now ?? now) < now - REPLAY.windowMs) this.replayFrames.shift();
   }
@@ -403,8 +416,9 @@ export class Game {
   private clearEffects(player: Player): void {
     delete player.drop;
     Object.assign(player, {
-      strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, swordUntil: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
+      paceUntil: 0, pace: null, collected: 0, used: 0, abilityReadyAt: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, swordUntil: 0, gunUntil: 0, nextShotAt: 0,
+      frozenUntil: 0, freezeImmuneUntil: 0, invisibleUntil: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
       facing: homeFacing(player.team),
     });
   }
@@ -469,7 +483,6 @@ export class Game {
       });
     }
     state.pickups = [];
-    state.traps = [];
     state.portals = [];
     while (state.portals.length < state.settings.portalCount) {
       const mirrored = state.settings.portalCount - state.portals.length >= 2;
@@ -628,27 +641,52 @@ export class Game {
     }
   }
 
-  /** Fires one golden gun shot in the player's facing direction. Its last shot frees the item slot. */
-  private fireGun(player: Player, now: number): void {
-    player.gunAmmo = (player.gunAmmo || GUN.shots) - 1;
-    if (!player.gunAmmo) {
-      player.inventory.shift();
-      player.used++;
+  /** Golden gun auto-fire: each armed player shoots the nearest visible enemy non-king in range with a clear line. */
+  private autoFireGuns(now: number): void {
+    for (const player of this.state.players) {
+      if (this.state.phase !== 'playing') return;
+      if (player.king || !alive(player) || isFrozen(player, now) || player.gunUntil <= now || player.nextShotAt > now) continue;
+      const level = levelAt(this.state.walkway, player);
+      const targets = this.state.players.filter(candidate => candidate !== player && alive(candidate) &&
+        levelAt(this.state.walkway, candidate) === level && !(candidate.team !== player.team && isCloaked(candidate, now)));
+      const enemies = targets.filter(candidate => candidate.team !== player.team && !candidate.king)
+        .sort((a, b) => distance(player, a) - distance(player, b));
+      for (const enemy of enemies) {
+        if (distance(player, enemy) > GUN.rangeTiles) break;
+        const aim = { x: enemy.x - player.x, y: enemy.y - player.y };
+        const shot = this.castFrom(player, aim, targets, GUN.rangeTiles, false);
+        if (shot.hit?.id !== enemy.id) continue;
+        player.facing = aim;
+        player.nextShotAt = now + GUN.autoIntervalMs;
+        this.state.shots.push({ from: { x: player.x, y: player.y }, to: shot.to, team: player.team, at: now,
+          hitId: enemy.id, stoppedBy: shot.stoppedBy, kind: 'gun' });
+        player.kills++;
+        this.takeOut(enemy, now, 'shot', GUN.respawnMs);
+        break;
+      }
     }
+  }
+
+  /** Wizard: a freeze bolt the way the wizard faces. Freezes the first enemy unit it reaches, kings included. */
+  private castFreezeBolt(player: Player, now: number): void {
     const level = levelAt(this.state.walkway, player);
     const targets = this.state.players.filter(candidate => candidate !== player && alive(candidate) &&
-      levelAt(this.state.walkway, candidate) === level);
-    const shot = castShot(player, player.facing, player.team, targets,
-      point => levelAt(this.state.walkway, point) !== level || this.isBlocked({ x: Math.round(point.x), y: Math.round(point.y) }),
-      GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius);
-    this.state.shots.push({
-      from: { x: player.x, y: player.y }, to: shot.to, team: player.team, at: now,
-      hitId: shot.hit?.id ?? null, stoppedBy: shot.stoppedBy,
-    });
+      levelAt(this.state.walkway, candidate) === level && !(candidate.team !== player.team && isCloaked(candidate, now)));
+    const shot = this.castFrom(player, player.facing, targets, ABILITY.boltRangeTiles, true);
+    this.state.shots.push({ from: { x: player.x, y: player.y }, to: shot.to, team: player.team, at: now,
+      hitId: shot.hit?.id ?? null, stoppedBy: shot.stoppedBy, kind: 'freeze' });
     const victim = shot.hit && this.state.players.find(candidate => candidate.id === shot.hit?.id);
-    if (!victim) return;
-    player.kills++;
-    this.takeOut(victim, now, 'shot', GUN.respawnMs);
+    if (!victim || victim.freezeImmuneUntil > now) return;
+    victim.frozenUntil = now + ABILITY.freezeMs;
+    victim.freezeImmuneUntil = victim.frozenUntil + ABILITY.freezeImmunityMs;
+    this.velocities.delete(victim.id);
+  }
+
+  private castFrom(player: Player, direction: Point, targets: Player[], range: number, hitKings: boolean) {
+    const level = levelAt(this.state.walkway, player);
+    return castShot(player, direction, player.team, targets,
+      point => levelAt(this.state.walkway, point) !== level || this.isBlocked({ x: Math.round(point.x), y: Math.round(point.y) }),
+      range, GUN.stepTiles, GUN.hitRadius, hitKings);
   }
 
   /** Takes a player out of play (shot or drowned) until `respawn` brings them back in their starting box. */
@@ -658,7 +696,7 @@ export class Game {
     victim.respawnAt = now + ms;
     victim.outCause = cause;
     delete victim.drop;
-    Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0, swordUntil: 0 });
+    Object.assign(victim, { paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0, swordUntil: 0, gunUntil: 0, frozenUntil: 0, invisibleUntil: 0 });
     this.velocities.delete(victim.id);
     this.laneBoostUntil.delete(victim.id);
   }
@@ -742,7 +780,7 @@ export class Game {
     if (this.swordContact(player, occupants, now)) return alive(player) && this.move(player, delta, now, smooth);
     const defender = occupants[0];
     if (defender) {
-      if (occupants.length > 1 || defender.team === player.team || player.king || player.strengthUntil <= now ||
+      if (occupants.length > 1 || defender.team === player.team || player.king || !hasStrength(player) ||
         (smooth && (this.nextPush.get(player.id) ?? 0) > now)) {
         return (occupants.length === 1 && this.tryVault(player, delta, now, smooth, defender)) ||
           this.recoil(player, delta, now, smooth);
@@ -829,30 +867,25 @@ export class Game {
   }
 
   private enter(player: Player, now: number): void {
-    const index = player.king || player.inventory.length ? -1 : this.state.pickups.findIndex(pickup => this.touches(player, pickup));
+    // Pickups activate on touch for 10 s (touching another refreshes it); kings can't collect.
+    const index = player.king ? -1 : this.state.pickups.findIndex(pickup => this.touches(player, pickup));
     if (index >= 0) {
       const [pickup] = this.state.pickups.splice(index, 1);
       if (pickup) {
-        player.inventory.push(pickup.kind);
+        if (pickup.kind === 'sword') player.swordUntil = now + SWORD.activeMs;
+        else {
+          player.gunUntil = now + GUN.activeMs;
+          player.nextShotAt = now;
+        }
         player.collected++;
         this.scheduleRespawn(now);
       }
     }
-    this.checkTrap(player, now);
     if (inHole(this.state.holes, player)) {
       this.state.splashes.push({ x: player.x, y: player.y, at: now });
       this.takeOut(player, now, 'drowned', HOLES.respawnMs);
       if (player.king) this.end({ winner: opposite(player.team), reason: 'king-drowned' });
     }
-  }
-
-  private checkTrap(player: Player, now: number): void {
-    const index = this.state.traps.findIndex(trap => trap.team !== player.team && trap.expires > now && this.touches(player, trap));
-    if (index < 0) return;
-    this.state.traps.splice(index, 1);
-    player.pace = 'slow';
-    player.paceUntil = now + TUNING.slowMs;
-    player.tripped++;
   }
 
   private timeoutWinner(): Team | null {

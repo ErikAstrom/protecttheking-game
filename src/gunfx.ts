@@ -17,16 +17,17 @@ export function drawShots(ctx: CanvasRenderingContext2D, project: Project, shots
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#fff6c2';
+    const freeze = shot.kind === 'freeze';
+    ctx.strokeStyle = freeze ? '#e6f7ff' : '#fff6c2';
     ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
-    ctx.strokeStyle = GOLD;
+    ctx.strokeStyle = freeze ? '#7cc8ff' : GOLD;
     ctx.lineWidth = 2.5;
     ctx.stroke();
-    const flash = shot.stoppedBy === 'player' ? '#ff5a4e' : shot.stoppedBy === 'king' ? '#ffe097' : '#ffffff';
+    const flash = freeze ? '#bfe9ff' : shot.stoppedBy === 'player' ? '#ff5a4e' : shot.stoppedBy === 'king' ? '#ffe097' : '#ffffff';
     ctx.fillStyle = flash;
     ctx.beginPath();
     for (let spike = 0; spike < 8; spike++) {
@@ -38,14 +39,15 @@ export function drawShots(ctx: CanvasRenderingContext2D, project: Project, shots
     }
     ctx.closePath();
     ctx.fill();
-    if (shot.stoppedBy === 'player') {
+    if (shot.hitId) {
       ctx.font = 'bold 14px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#0b1321';
-      ctx.strokeText('SHOT!', to.x, to.y - 22);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('SHOT!', to.x, to.y - 22);
+      const label = freeze ? 'FROZEN!' : 'SHOT!';
+      ctx.strokeText(label, to.x, to.y - 22);
+      ctx.fillStyle = freeze ? '#bfe9ff' : '#ffffff';
+      ctx.fillText(label, to.x, to.y - 22);
     }
     ctx.restore();
   }

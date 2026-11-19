@@ -20,7 +20,7 @@ test('every round locks movement, bots, and sprint until the full round clock st
     const positions = () => game.state.players.map(({ x, y }) => [x, y]);
     const spawns = positions();
     game.input(king.id, 'down');
-    game.useItem(king.id, start + 100);
+    game.useAbility(king.id, start + 100);
     game.tick(start + 2999);
     assert.equal(game.state.phase, 'countdown');
     assert.equal(king.used, 0);
@@ -30,7 +30,7 @@ test('every round locks movement, bots, and sprint until the full round clock st
     assert.equal(game.state.deadline - game.state.now, 10000);
     assert.deepEqual(positions(), spawns);
     game.input(king.id, 'down');
-    game.useItem(king.id, start + 3025);
+    game.useAbility(king.id, start + 3025);
     game.tick(start + 3025);
     assert.equal(king.used, 1);
     assert.equal(king.y, spawns[game.state.players.indexOf(king)]![1]! + 1);

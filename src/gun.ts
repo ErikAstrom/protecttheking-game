@@ -21,6 +21,8 @@ export type ShotResult = {
 export function castShot(
   from: Point, facing: Point, team: Team, targets: readonly ShotTarget[],
   blocked: (point: Point) => boolean, range: number, step: number, hitRadius: number,
+  /** Freeze bolts can hit kings; golden gun shots can't (kings absorb them). */
+  hitKings = false,
 ): ShotResult {
   const length = Math.hypot(facing.x, facing.y) || 1;
   const unit = { x: facing.x / length, y: facing.y / length };
@@ -31,7 +33,10 @@ export function castShot(
     const touched = targets
       .filter(target => (target.king || target.team !== team) && Math.hypot(target.x - point.x, target.y - point.y) <= hitRadius)
       .sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y))[0];
-    if (touched) return { to: point, hit: touched.king ? null : touched, stoppedBy: touched.king ? 'king' : 'player' };
+    if (touched) {
+      if (touched.king && !hitKings) return { to: point, hit: null, stoppedBy: 'king' };
+      return { to: point, hit: touched.team === team ? null : touched, stoppedBy: touched.king ? 'king' : 'player' };
+    }
     last = point;
   }
   return { to: last, hit: null, stoppedBy: 'range' };

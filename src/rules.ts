@@ -62,20 +62,35 @@ export function tiltSpeed(tilt: Tilt | undefined, direction: Point | null, now: 
   return 1 + tiltAmount(tilt, now) * TILT.speedGain * (direction.x * tilt.downhill.x + direction.y * tilt.downhill.y) /
     (Math.hypot(direction.x, direction.y) || 1);
 }
+/** Pickups. Both activate the moment you touch them and work automatically for 10 s, so Space stays free for your class. */
 export const ITEMS = {
-  strength: { name: 'Strength', color: '#ffc46e' },
-  speed: { name: 'Speed', color: '#66ebbf' },
-  slow: { name: 'Slow trap', color: '#e3a8ff' },
-  vault: { name: 'Vault', color: '#8de8ff' },
-  gun: { name: 'Golden gun', color: '#ffd23f' },
   sword: { name: 'Sword', color: '#d9e4ee' },
+  gun: { name: 'Golden gun', color: '#ffd23f' },
 } as const;
-/** Items used for opening pickups and ordinary respawns. The golden gun is rare and spawns separately (see GUN). */
-export const COMMON_ITEMS = ['strength', 'speed', 'slow', 'vault', 'sword'] as const;
+/** Items used for opening pickups and ordinary respawns. The golden gun is rarer and spawns separately (see GUN). */
+export const COMMON_ITEMS = ['sword'] as const;
 export const ITEM_KINDS = [...COMMON_ITEMS, 'gun'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
-export type Trap = Point & { team: Team; expires: number };
+
+/** Classes: every player picks one in the lobby. Space uses the ability (kings use the king sprint instead). See src/classes.ts. */
+export const CLASS_KINDS = ['hunter', 'bodyguard', 'wizard', 'strategist', 'spy'] as const;
+export type ClassKind = (typeof CLASS_KINDS)[number];
+export const CLASSES: Record<ClassKind, { name: string; ability: string; description: string; color: string; passive?: true }> = {
+  hunter: { name: 'Hunter', ability: 'Sprint', description: 'Space: sprint like the king (4 s, then recharge).', color: '#66ebbf' },
+  bodyguard: { name: 'Bodyguard', ability: 'Strength', description: 'Passive: always strong enough to shove enemy hunters.', color: '#ffc46e', passive: true },
+  wizard: { name: 'Wizard', ability: 'Freeze bolt', description: 'Space: fire a freeze bolt the way you face (1.5 s cooldown).', color: '#9fd4ff' },
+  strategist: { name: 'Strategist', ability: 'Vault', description: 'Space: your next bump within 5 s vaults over a wall or player.', color: '#8de8ff' },
+  spy: { name: 'Spy', ability: 'Cloak', description: 'Space: invisible to the enemy team for 3 s.', color: '#c9a8ff' },
+};
+export const ABILITY = {
+  /** Hunter sprint reuses the king's numbers (TUNING.speedMs active, TUNING.kingRechargeMs recharge). */
+  wizardCooldownMs: 1500, boltRangeTiles: 10, freezeMs: 1000,
+  /** After thawing, a unit can't be frozen again for this long (stops freeze-locking). */
+  freezeImmunityMs: 800,
+  strategistCooldownMs: 8000,
+  spyCloakMs: 3000, spyCooldownMs: 12000,
+} as const;
 /** A round water hole in the ice sheet (Penguin world). Fall in and you're out until respawn. */
 export type Hole = Point & { radius: number };
 /** A brief splash where someone fell into the water, for drawing. */
@@ -83,8 +98,8 @@ export type Splash = Point & { at: number };
 /** A sword chop, kept briefly so clients can draw the slash. */
 export type Slash = { from: Point; to: Point; at: number };
 export type BlackHole = Point & { expires: number };
-/** A golden gun shot, kept briefly so clients can draw the tracer. */
-export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range' };
+/** A golden gun shot or freeze bolt, kept briefly so clients can draw the tracer. */
+export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range'; kind?: 'gun' | 'freeze' };
 export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
 export type Movement = (typeof MOVEMENTS)[number];
 export const WORLDS = ['penguin', 'arena', 'rooms', 'space'] as const;
@@ -124,12 +139,11 @@ export function matchStartError(settings: Settings, players: readonly Player[]):
 }
 export const TUNING = {
   roundCountdownMs: 3000, roundGoMs: 700,
-  pushTiles: 2, strengthMs: 6000, speedMs: 4000, slowMs: 3000,
+  pushTiles: 2, speedMs: 4000,
   moveMs: 100, fastMoveMs: 65, slowMoveMs: 200, proximityTiles: 5, tickMs: 25,
   smoothRadius: 0.44, smoothStep: 0.2, smoothPushCooldownMs: 400,
   smoothTurnMs: 70, smoothFastTurnMs: 120,
   pickupRadius: 0.9, pickupSpacing: 2, respawnMinMs: 2500, respawnMaxMs: 6500,
-  trapLifetimeMs: 20000,
   vaultMs: 5000, vaultWallTiles: 6, vaultPlayerTiles: 2, vaultScanStep: 0.05,
   kingRechargeMs: 10000, recoilDistance: 1, recoilMs: 180,
 };
@@ -152,10 +166,10 @@ export const ICE = {
 } as const;
 // Golden gun (rare item; see src/gun.ts).
 export const GUN = {
-  /** Shots per gun. */
-  shots: 3,
+  /** Auto-fire lasts this long after pickup; it shoots the nearest visible enemy non-king in range and in line, at most every autoIntervalMs. */
+  activeMs: 10000, autoIntervalMs: 700,
   /** Chance that a respawning pickup becomes a golden gun (only when none is on the board). */
-  spawnChance: 0.08,
+  spawnChance: 0.2,
   /** Maximum shot distance in tiles. */
   rangeTiles: 14,
   /** Shot resolution step and how close (in tiles) a shot must pass to hit a player. */
@@ -185,7 +199,7 @@ export const SPACE = {
 } as const;
 // Sword (common item; see src/sword.ts).
 export const SWORD = {
-  /** How long the sword stays out after pressing Space. Unlimited chops meanwhile. */
+  /** How long the sword stays out after picking it up. Unlimited chops meanwhile. */
   activeMs: 10000,
   /** Enemy non-kings this close (tile centres) are chopped. Body contact is ~0.88, so this reaches a little further. */
   reachTiles: 1.15,
@@ -196,18 +210,26 @@ export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 }
 export const CROWN_BLUFF = { range: 4, durationMs: 6000, popMs: 700 } as const;
 export type CrownBluff = { decoyId: string; until: number };
 export type Player = Point & {
-  id: string; name: string; team: Team; king: boolean; strengthUntil: number;
+  id: string; name: string; team: Team; king: boolean;
   bot?: true;
-  paceUntil: number; pace: 'speed' | 'slow' | null;
-  inventory: ItemKind[]; collected: number; used: number; tripped: number;
+  /** Chosen in the lobby. */
+  role: ClassKind;
+  /** When the class ability (or the king's sprint, for kings) can next be used. */
+  abilityReadyAt: number;
+  paceUntil: number; pace: 'speed' | null;
+  collected: number; used: number;
   vaultUntil: number;
+  /** Wizard freeze: can't move or act until then; can't be refrozen until freezeImmuneUntil. */
+  frozenUntil: number; freezeImmuneUntil: number;
+  /** Spy cloak: hidden from the enemy team until then. */
+  invisibleUntil: number;
   /** While > now, this player's sword is out. */
   swordUntil: number;
   sprintReadyAt: number; recoilUntil: number; portalTrips: number;
   /** Last movement direction; golden gun shots go this way. */
   facing: Point;
-  /** Shots left on the held golden gun (0 = not started yet). */
-  gunAmmo: number;
+  /** While > now, the golden gun auto-fires (next shot no earlier than nextShotAt). */
+  gunUntil: number; nextShotAt: number;
   /** While > 0 the player is dead and respawns at this time. */
   respawnAt: number;
   outCause: 'shot' | 'drowned' | 'chopped' | null;
@@ -217,9 +239,9 @@ export type Player = Point & {
 export type Result = { winner: Team | null; reason: 'capture' | 'timeout' | 'king-drowned' };
 export type ReplayFrame = {
   tilt?: Tilt;
-  now: number; pickups: Pickup[]; traps: Trap[]; blackHole: BlackHole | null;
-  players: Pick<Player, 'id' | 'team' | 'king' | 'x' | 'y' | 'strengthUntil' | 'paceUntil' | 'pace' |
-    'recoilUntil' | 'portalTrips' | 'respawnAt' | 'drop'>[];
+  now: number; pickups: Pickup[]; blackHole: BlackHole | null;
+  players: Pick<Player, 'id' | 'team' | 'king' | 'role' | 'x' | 'y' | 'paceUntil' | 'pace' |
+    'recoilUntil' | 'portalTrips' | 'respawnAt' | 'drop' | 'frozenUntil' | 'invisibleUntil'>[];
 };
 export type CaptureReplay = {
   hunterId: string; kingId: string; contact: Point; frames: ReplayFrame[];
@@ -236,7 +258,7 @@ export type State = {
   movementTerrain: MovementTerrain[];
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
-  deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
+  deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[];
   portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; holes: Hole[]; splashes: Splash[]; slashes: Slash[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export const roundStartsAt = (state: State) => state.deadline - state.settings.seconds * 1000;
@@ -249,7 +271,8 @@ export type Command =
   | { type: 'team'; team: Team }
   | { type: 'input'; direction: Direction | null }
   | { type: 'settings'; settings: Settings }
-  | { type: 'start' | 'next' | 'reset' | 'use-item' | 'crown-bluff' };
+  | { type: 'class'; role: ClassKind }
+  | { type: 'start' | 'next' | 'reset' | 'ability' | 'crown-bluff' };
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -270,12 +293,13 @@ export function readSettings(value: unknown): Settings | null {
     typeof randomWorld === 'boolean' && typeof balanceBots === 'boolean' &&
     MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world) && validItems(items)
     ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World,
-      randomWorld, balanceBots, tiltChance, tiltSeconds, items: ITEM_KINDS.filter(kind => items.includes(kind)) } : null;
+      randomWorld, balanceBots, tiltChance, tiltSeconds, items: ITEM_KINDS.filter(kind => (items as string[]).includes(kind)) } : null;
 }
 
-function validItems(items: unknown): items is ItemKind[] {
-  return Array.isArray(items) && items.length <= ITEM_KINDS.length &&
-    items.every(item => ITEM_KINDS.some(kind => kind === item)) && new Set(items).size === items.length;
+/** A list of item names. Names that no longer exist (e.g. from an older lobby page) are ignored rather than rejected. */
+function validItems(items: unknown): items is string[] {
+  return Array.isArray(items) && items.length <= 16 && items.every(item => typeof item === 'string') &&
+    new Set(items).size === items.length;
 }
 
 /** The ordinary (non-rare) power-ups enabled for this match, in rotation order. */

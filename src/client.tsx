@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
+import { abilityStatus } from './classes.ts';
 import { GameAudio, newShotCount } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
-import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
+import { ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, surfaceAt, CLASSES, CLASS_KINDS } from './rules.ts';
 import type { Command, Direction, Movement, ServerMessage, Settings, State, Team, World } from './rules.ts';
 
 const MOVEMENT_LABELS: Record<Movement, string> = {
@@ -227,7 +228,6 @@ function App() {
   }, []);
 
   const player = state?.players.find(candidate => candidate.id === id);
-  const heldItem = player?.inventory[0];
   const canMove = !!player && state?.phase === 'playing' && connected;
   const smooth = !!state && isFractional(state.settings.movement);
   const world = state?.roundWorld ?? state?.settings.world;
@@ -255,7 +255,7 @@ function App() {
         event.preventDefault();
         if (!event.repeat) {
           if (event.code === 'KeyE') send({ type: 'crown-bluff' });
-          else transmit({ type: 'use-item' });
+          else transmit({ type: 'ability' });
         }
         return;
       }
@@ -301,7 +301,8 @@ function App() {
     if (state.phase === 'playing' && state.tilt && state.tilt.startedAt !== previous.tilt?.startedAt) engine.cue('board-tilt');
     if (state.result && !previous.result) engine.cue(state.result.reason);
     if (previous.phase === 'playing' && state.round === previous.round) {
-      const shots = newShotCount(previous.shots, state.shots);
+      const gunShots = (shots: State['shots']) => shots.filter(shot => shot.kind !== 'freeze');
+      const shots = newShotCount(gunShots(previous.shots), gunShots(state.shots));
       for (let shot = 0; shot < shots; shot++) engine.cue('golden-gun-fire');
     }
     if (state.phase === 'playing' && state.round === previous.round) {
@@ -312,12 +313,8 @@ function App() {
       const local = state.players.find(member => member.id === id);
       const old = previous.players.find(member => member.id === id);
       if (local && old) {
-        if (local.collected > old.collected) {
-          const pickedUpGun = local.inventory[0] === 'gun';
-          engine.cue(pickedUpGun ? 'golden-gun-pickup' : 'pickup');
-        }
-        if (local.used > old.used && old.inventory[0] !== 'gun') engine.cue('use');
-        if (local.tripped > old.tripped) engine.cue('trap');
+        if (local.collected > old.collected) engine.cue(local.gunUntil > old.gunUntil ? 'golden-gun-pickup' : 'pickup');
+        if (local.used > old.used) engine.cue('use');
       }
       if (state.deadline - state.now <= 10000 && previous.deadline - previous.now > 10000) engine.cue('urgent');
     }
@@ -388,7 +385,7 @@ function App() {
             <h2><span>{TEAM_NAMES[team]}{player?.team === team && <small> · Your team</small>}</span><strong>{state.score[team]}</strong></h2>
             <p>{roster.length}/{state.settings.teamSize} players</p>
             <ul>{roster.map(member => <li key={member.id}>
-              {member.name}{member.id === id ? ' (you)' : ''}{member.king ? ' · King' : ''}
+              {member.name}{member.id === id ? ' (you)' : ''} · {CLASSES[member.role].name}{member.king ? ' · King' : ''}
               {state.crownBluff?.decoyId === member.id && state.crownBluff.until > state.now ? ' · Decoy' : ''}
               {member.id === state.host ? ' · Host' : ''}
             </li>)}</ul>
@@ -397,6 +394,18 @@ function App() {
           </div>;
         })}
       </section>
+      {player && (lobby || state.phase === 'between') && <section className="class-picker" aria-label="Choose your class">
+        <h2>Your class</h2>
+        <div className="classes">
+          {CLASS_KINDS.map(role => <label key={role} className={`class-option${player.role === role ? ' chosen' : ''}`}
+            style={{ borderColor: player.role === role ? CLASSES[role].color : undefined }}>
+            <input type="radio" name="class" checked={player.role === role} onChange={() => send({ type: 'class', role })} />
+            <strong style={{ color: CLASSES[role].color }}>{CLASSES[role].name}</strong>
+            <span>{CLASSES[role].description}</span>
+          </label>)}
+        </div>
+        <p className="hint">As king you use the King sprint (Space) and Crown Bluff (E) instead. Changes apply from the next round.</p>
+      </section>}
       {lobby && host && <>
         <SettingsForm key={JSON.stringify(state.settings)} settings={state.settings} send={send} />
         <button disabled={!!startError} onClick={() => send({ type: 'start' })}>Start match</button>
@@ -408,10 +417,11 @@ function App() {
         <section className={`round${seconds <= 10 && state.phase === 'playing' ? ' urgent' : ''}`} aria-label="Round status">
           <strong>Round {state.round} · {state.phase === 'countdown' ? state.settings.seconds : seconds}s · First to {state.settings.wins} · {state.settings.movement === 'ice' ? 'Ice' : smooth ? 'Smooth' : 'Classic'}</strong>
           <span>{WORLD_LABELS[state.roundWorld ?? state.settings.world]}</span>
-          {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
-            {player.strengthUntil > state.now ? ' · Strength active' : ''}
-            {player.swordUntil > state.now ? ` · Sword out: ${Math.ceil((player.swordUntil - state.now) / 1000)}s` : ''}
-            {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
+          {player ? <span>{player.king ? 'You wear the crown' : CLASSES[player.role].name} · WASD / arrows
+            {player.swordUntil > state.now ? ` · Sword: ${Math.ceil((player.swordUntil - state.now) / 1000)}s` : ''}
+            {player.gunUntil > state.now ? ` · Golden gun: ${Math.ceil((player.gunUntil - state.now) / 1000)}s` : ''}
+            {player.frozenUntil > state.now ? ' · FROZEN' : ''}
+            {player.invisibleUntil > state.now ? ' · Cloaked' : ''}
             {surface ? ` · ${penguin ? (surface === 'ice' ? 'Black ice' : 'Slush') : SURFACES[surface].label}` : ''}
           </span> : <span>Spectating until the match ends</span>}
         </section>
@@ -435,16 +445,20 @@ function App() {
             ? `Decoy active: ${Math.ceil((state.crownBluff.until - state.now) / 1000)}s`
             : 'Used this round' : 'Once per round · nearest teammate within 4 tiles'}</span>
         </section>}
-        {player && !player.king && <section className="inventory" aria-label="Your item slot">
-          <strong><kbd>Space</kbd> {heldItem === 'gun' ? 'Shoot (where you last moved)' : 'Use item'}</strong>
-          {heldItem ? <ol>
-            <li className={heldItem}>
-              <span aria-hidden="true">{GLYPHS[heldItem]}</span>
-              <span>{ITEMS[heldItem].name}{heldItem === 'gun' ? ` · ${player.gunAmmo || GUN.shots} shots` : ''}</span>
-            </li>
-          </ol> : <span className="empty-queue">Empty slot — move over a pickup.</span>}
-          {player.vaultUntil > state.now && <span>Vault ready: {Math.ceil((player.vaultUntil - state.now) / 1000)}s</span>}
-        </section>}
+        {player && !player.king && (() => {
+          const ability = abilityStatus(player, state.now);
+          return <section className="inventory" aria-label="Your class ability">
+            <strong>{ability.state === 'passive' ? 'Passive' : <kbd>Space</kbd>} {ability.name}</strong>
+            <span className={`ability ${ability.state}`}>{ability.state === 'ready' ? 'Ready'
+              : ability.state === 'active' ? `Active: ${ability.seconds}s`
+              : ability.state === 'cooldown' ? `Recharging: ${ability.seconds}s`
+              : ability.state === 'frozen' ? 'Frozen!' : CLASSES[player.role].description}</span>
+            {ITEM_KINDS.map(kind => {
+              const until = kind === 'sword' ? player.swordUntil : player.gunUntil;
+              return until > state.now && <span key={kind} className={kind}>{GLYPHS[kind]} {ITEMS[kind].name}: {Math.ceil((until - state.now) / 1000)}s (automatic)</span>;
+            })}
+          </section>;
+        })()}
         <div className="round-board">
           <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
           <RoundCountdown state={state} />
@@ -457,7 +471,7 @@ function App() {
           {world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}
           {state.walkway && <span>Raised routes: climb the gold stairs or drop off the sides</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
-          {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
+          {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name} (10 s, automatic)</span>)}</p>
       </>}
     </>}
   </main>;

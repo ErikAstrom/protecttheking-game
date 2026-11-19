@@ -10,11 +10,11 @@ test('all power-ups are enabled by default', () => {
 });
 
 test('lobby validation accepts any subset (including none) and normalises the order', () => {
-  assert.deepEqual(readSettings({ ...DEFAULT_SETTINGS, items: ['sword', 'strength'] })?.items, ['strength', 'sword']);
+  assert.deepEqual(readSettings({ ...DEFAULT_SETTINGS, items: ['gun', 'sword'] })?.items, ['sword', 'gun']);
   assert.deepEqual(readSettings({ ...DEFAULT_SETTINGS, items: [] })?.items, []);
   const { items: _omitted, ...older } = DEFAULT_SETTINGS;
   assert.deepEqual(readSettings(older)?.items, [...ITEM_KINDS], 'older clients without the field get everything');
-  assert.equal(readSettings({ ...DEFAULT_SETTINGS, items: ['laser'] }), null);
+  assert.deepEqual(readSettings({ ...DEFAULT_SETTINGS, items: ['strength', 'sword'] })?.items, ['sword'], 'removed power-ups from older pages are ignored');
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, items: ['sword', 'sword'] }), null);
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, items: 'sword' }), null);
 });
@@ -40,15 +40,16 @@ function respawnMany(game: Game, times: number, random: number) {
 }
 
 test('only ticked power-ups appear, at round start and on respawn', () => {
-  const game = round(['sword', 'vault']);
+  const game = round(['sword', 'gun']);
   assert.ok(game.state.pickups.length > 0);
   respawnMany(game, 20, 0.001);
   const kinds = new Set(game.state.pickups.map(pickup => pickup.kind));
-  assert.deepEqual([...kinds].sort(), ['sword', 'vault']);
+  assert.deepEqual([...kinds].sort(), ['gun', 'sword']);
+  assert.equal(game.state.pickups.filter(pickup => pickup.kind === 'gun').length, 1, 'still at most one gun');
 });
 
 test('an unticked golden gun never appears, even on a lucky roll', () => {
-  const game = round(['strength', 'speed', 'slow', 'vault', 'sword']);
+  const game = round(['sword']);
   respawnMany(game, 30, 0.001);
   assert.ok(game.state.pickups.every(pickup => pickup.kind !== 'gun'));
 });

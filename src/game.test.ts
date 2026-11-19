@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { Game } from './game.ts';
 import { startActiveRound } from './test-round.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
-import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING } from './rules.ts';
+import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING, GUN, SWORD } from './rules.ts';
 import type { Settings } from './rules.ts';
 
 function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10, y: 21, kind: 'wall' }])) {
@@ -126,16 +126,16 @@ test('crates and pillars block players in both movement modes', () => {
   }
 });
 
-test('a defender blocks a hunter until the hunter has strength', () => {
+test('a defender blocks a hunter, but a Bodyguard (passive strength) pushes through', () => {
   const { game, red, blue } = setup();
   Object.assign(red, { x: 10, y: 10 });
-  Object.assign(blue, { x: 11, y: 10, strengthUntil: 9000 });
+  Object.assign(blue, { x: 11, y: 10, role: 'bodyguard' });
   game.input(red.id, 'right');
   game.tick(1100);
   assert.deepEqual([red.x, blue.x], [9, 11]);
   game.tick(1200);
   assert.deepEqual([red.x, blue.x], [9, 11]);
-  red.strengthUntil = 9000;
+  red.role = 'bodyguard';
   game.tick(1300);
   game.tick(1400);
   assert.deepEqual([red.x, blue.x], [11, 13]);
@@ -143,7 +143,7 @@ test('a defender blocks a hunter until the hunter has strength', () => {
 
 test('a push stops before an occupied tile and cannot push a teammate', () => {
   const { game, redKing, blueKing, red, blue } = setup();
-  Object.assign(red, { x: 10, y: 10, strengthUntil: 9000 });
+  Object.assign(red, { x: 10, y: 10, role: 'bodyguard' });
   Object.assign(blue, { x: 11, y: 10 });
   Object.assign(blueKing, { x: 13, y: 10 });
   game.input(red.id, 'right');
@@ -155,73 +155,23 @@ test('a push stops before an occupied tile and cannot push a teammate', () => {
   assert.deepEqual([red.y, redKing.y], [11, 9]);
 });
 
-test('strength pickups refresh a six-second effect that expires at the deadline', () => {
-  const { game, red, blue } = setup();
-  Object.assign(red, { x: 10, y: 10 });
-  Object.assign(blue, { x: 13, y: 10 });
-  game.state.pickups = [{ x: 11, y: 10, kind: 'strength' }, { x: 12, y: 10, kind: 'strength' }];
-  game.input(red.id, 'right');
-  game.tick(1100);
-  assert.equal(red.strengthUntil, 0);
-  game.useItem(red.id, 1100);
-  assert.equal(red.strengthUntil, 7100);
-  game.tick(1200);
-  game.useItem(red.id, 1200);
-  assert.equal(red.strengthUntil, 7200);
-  game.tick(7200);
-  assert.equal(blue.x, 13);
-});
-
-test('a full item slot leaves pickups on the board until collected', () => {
+test('touching a pickup activates it at once for 10 s, and collected pickups respawn', () => {
   const { game, red } = setup({ pickupCount: 2 });
   assert.equal(game.state.pickups.length, 2);
-  game.state.pickups = [{ x: 11, y: 10, kind: 'speed' }, { x: 12, y: 10, kind: 'strength' }];
+  game.state.pickups = [{ x: 11, y: 10, kind: 'sword' }, { x: 12, y: 10, kind: 'gun' }];
   Object.assign(red, { x: 10, y: 10 });
   game.input(red.id, 'right');
   game.tick(1100);
+  assert.equal(red.swordUntil, 1100 + SWORD.activeMs);
   game.tick(1200);
-  assert.deepEqual(red.inventory, ['speed']);
-  assert.deepEqual(game.state.pickups, [{ x: 12, y: 10, kind: 'strength' }]);
-  assert.equal(red.pace, null);
-  game.useItem(red.id, 1200);
-  assert.deepEqual(red.inventory, []);
-  assert.equal(red.pace, 'speed');
-  assert.equal(red.strengthUntil, 0);
-  game.tick(1300);
-  game.input(red.id, 'left');
-  game.tick(1400);
-  game.input(red.id, null);
-  assert.deepEqual(red.inventory, ['strength']);
-  game.useItem(red.id, 1400);
-  assert.equal(red.strengthUntil, 1400 + TUNING.strengthMs);
-  game.tick(1100 + TUNING.respawnMinMs - 1);
+  assert.equal(red.gunUntil, 1200 + GUN.activeMs, 'both can be active together');
+  assert.equal(red.collected, 2);
   assert.equal(game.state.pickups.length, 0);
-  game.tick(1400 + TUNING.respawnMaxMs);
+  game.input(red.id, null);
+  game.tick(1200 + TUNING.respawnMaxMs);
   assert.equal(game.state.pickups.length, 2);
   const [first, second] = game.state.pickups;
   assert.ok(first && second && Math.hypot(first.x - second.x, first.y - second.y) >= TUNING.pickupSpacing);
-});
-
-test('placed trap ignores teammates and slows only the first enemy who enters', () => {
-  const { game, red, redKing, blue, blueKing } = setup();
-  Object.assign(red, { x: 10, y: 10, inventory: ['slow'] });
-  Object.assign(redKing, { x: 9, y: 10 });
-  Object.assign(blue, { x: 10, y: 11 });
-  Object.assign(blueKing, { x: 11, y: 10 });
-  game.useItem(red.id, 1050);
-  game.input(red.id, 'up');
-  game.tick(1100);
-  game.input(red.id, null);
-  game.input(redKing.id, 'right');
-  game.tick(1125);
-  assert.equal(redKing.pace, null);
-  assert.equal(game.state.traps.length, 1);
-  game.input(redKing.id, 'left');
-  game.input(blue.id, 'up');
-  game.tick(1225);
-  assert.equal(blue.pace, 'slow');
-  assert.equal(blue.paceUntil, 1225 + TUNING.slowMs);
-  assert.equal(game.state.traps.length, 0);
 });
 
 test('smooth diagonals use fractional coordinates and the same speed as cardinal movement', () => {
@@ -238,10 +188,7 @@ test('smooth turns carry momentum and sprinting increases sideways drift', () =>
   function corner(sprinting: boolean) {
     const { game, red } = setup({ movement: 'smooth' });
     Object.assign(red, { x: 10, y: 10 });
-    if (sprinting) {
-      red.inventory.push('speed');
-      game.useItem(red.id, 1000);
-    }
+    if (sprinting) game.useAbility(red.id, 1000); // Hunter (the default class) sprints
     game.input(red.id, 'right');
     game.tick(1025);
     const turnX = red.x;
@@ -276,8 +223,7 @@ test('continuous bodies stop at walls and block, push, and capture without tile 
   game.tick(1075);
   assert.ok(red.x < 10.1 && blue.x === 11.1);
   red.x = 10.1;
-  red.inventory.push('strength');
-  game.useItem(red.id, 1075);
+  red.role = 'bodyguard';
   game.tick(1275);
   assert.ok(Math.abs(blue.x - 13.1) < 1e-8);
   Object.assign(blueKing, { x: red.x + 0.98, y: 10.01 });
@@ -344,27 +290,27 @@ test('a smooth portal moves the player to the exact exit and uses up that moveme
 test('kings skip pickups, sprint from the start, and recharge before reuse', () => {
   const { game, redKing } = setup({ seconds: 60 });
   Object.assign(redKing, { x: 9, y: 10 });
-  game.state.pickups = [{ x: 10, y: 10, kind: 'speed' }];
+  game.state.pickups = [{ x: 10, y: 10, kind: 'sword' }];
   game.input(redKing.id, 'right');
   game.tick(1100);
   assert.equal(redKing.x, 10);
   assert.equal(game.state.pickups.length, 1);
-  assert.deepEqual(redKing.inventory, []);
-  game.useItem(redKing.id, 1100);
+  assert.equal(redKing.swordUntil, 0);
+  game.useAbility(redKing.id, 1100);
   assert.equal(redKing.pace, 'speed');
   assert.equal(redKing.paceUntil, 1100 + TUNING.speedMs);
   const ready = redKing.sprintReadyAt;
   assert.equal(ready, redKing.paceUntil + TUNING.kingRechargeMs);
-  game.useItem(redKing.id, ready - 1);
+  game.useAbility(redKing.id, ready - 1);
   assert.equal(redKing.used, 1);
-  game.useItem(redKing.id, ready);
+  game.useAbility(redKing.id, ready);
   assert.equal(redKing.used, 2);
   assert.equal(redKing.paceUntil, ready + TUNING.speedMs);
 });
 
 test('king contact scores before pushback and the next round rotates the kings', () => {
   const { game, redKing, blueKing, red, blue } = setup();
-  Object.assign(red, { x: 10, y: 10, strengthUntil: 9000 });
+  Object.assign(red, { x: 10, y: 10, role: 'bodyguard' });
   Object.assign(blueKing, { x: 11, y: 10 });
   game.input(red.id, 'right');
   game.tick(1100);
@@ -381,7 +327,7 @@ test('capture includes a bounded, ordered history and identifies the hunter even
   const { game, blueKing, red } = setup({ wins: 1 });
   Object.assign(red, { x: 11, y: 10 });
   Object.assign(blueKing, { x: 8, y: 10 });
-  game.state.pickups = [{ x: 9, y: 10, kind: 'speed' }];
+  game.state.pickups = [{ x: 9, y: 10, kind: 'sword' }];
   for (let now = 1025; now <= 5000; now += 25) game.tick(now);
   game.input(blueKing.id, 'right');
   for (let now = 5025; now <= 5225; now += 25) game.tick(now);

@@ -92,3 +92,13 @@ kbd { border: 1px solid #7f9aaf; border-radius: 0.28rem; padding: 0.12rem 0.26re
 .power-ups .check { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
 .power-ups input { width: 1.05rem; height: 1.05rem; margin: 0; }
 .power-ups .hint { flex-basis: 100%; margin: 0.2rem 0 0; font-size: 0.85rem; color: #a9bdc9; }
+.class-picker { margin-top: 0.75rem; background: #162438; border: 1px solid #405470; border-radius: 0.65rem; padding: 0.8rem; }
+.class-picker .classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+.class-option { display: grid; gap: 0.2rem; border: 2px solid #405470; border-radius: 0.5rem; padding: 0.5rem 0.6rem; cursor: pointer; background: #0f1a2b; }
+.class-option.chosen { background: #1d2f47; }
+.class-option input { position: absolute; opacity: 0; pointer-events: none; }
+.class-option span { font-size: 0.82rem; color: #c3d2de; }
+.class-option:has(input:focus-visible) { outline: 2px solid #ffe18a; outline-offset: 2px; }
+.class-picker .hint { font-size: 0.85rem; color: #a9bdc9; margin-bottom: 0; }
+.ability.ready { color: #66ebbf; font-weight: 700; }
+.ability.frozen { color: #9fd4ff; font-weight: 700; }

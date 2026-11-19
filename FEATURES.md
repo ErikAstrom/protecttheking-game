@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Classes (replace most power-ups)
-- **Status:** in progress — Claude (Erik's session), 2026-11-19 16:55
-- **Requested by:** Erik
-- **Description:** Every player picks a class in the lobby; Space uses its ability. Hunter: sprint like the king. Bodyguard: passive Strength. Wizard: freeze bolt (1.5 s cooldown). Strategist: vault over walls. Spy: invisible for a few seconds. Remove all power-ups except Sword and Golden gun; those two activate on pickup for 10 s and auto-hit/auto-shoot, so players keep their class ability.
-- **Files:** big change: `src/rules.ts`, `src/game.ts`, `src/bots.ts`, `src/server.ts`, `src/client.tsx`, `src/arena.tsx`, `src/penguin.ts`, `src/gun.ts`; new `src/classes.ts`, `src/classes.test.ts`; rewrites tests for removed items (`vault`, `gun`, `sword`, `items-setting`, `game`, `bots`). **Please avoid item/inventory/trap code until this lands.**
-- **Notes:**
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -86,6 +79,14 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Classes (replace most power-ups)
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** Every player picks a class in the lobby; Space uses its ability. Hunter: sprint like the king. Bodyguard: passive Strength. Wizard: freeze bolt (1.5 s cooldown). Strategist: vault over walls. Spy: invisible for a few seconds. Remove all power-ups except Sword and Golden gun; those two activate on pickup for 10 s and auto-hit/auto-shoot, so players keep their class ability.
+- **Files:** big change: `src/rules.ts`, `src/game.ts`, `src/bots.ts`, `src/server.ts`, `src/client.tsx`, `src/arena.tsx`, `src/penguin.ts`, `src/gun.ts`; new `src/classes.ts`, `src/classes.test.ts`; rewrites tests for removed items (`vault`, `gun`, `sword`, `items-setting`, `game`, `bots`).
+- **Notes:**
+  - 2026-11-19 — Done in `Add classes; sword and gun become automatic`. Defaults I chose: Wizard freeze 1 s (+0.8 s immunity), hits kings; Strategist 8 s cooldown; Spy 3 s cloak / 12 s recharge (client-side hidden, not cheat-proof); gun 20% of respawns, auto-fires every 0.7 s. Costumes per class (kings wear only the crown). 9 tests in `src/classes.test.ts`; rewrote gun/sword/vault/bots/items tests for the new model (138 pass). Browser-verified: lobby class picker + roster classes, Hunter/Strategist/Wizard costumes on penguins and Hunter/Spy on orcas, freeze bolt fires with 1.5 s recharge, frozen ice-block visual, enemy spy vanishes from red view when cloaked.
 
 ### Crown Bluff
 - **Status:** done — 2026-11-19
