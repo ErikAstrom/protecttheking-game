@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Match pickup count to players by default
+- **Status:** in progress — Copilot, 2026-11-19 14:14
+- **Requested by:** Playtest feedback
+- **Description:** Default to one on-board pickup per active player, with a fixed-count override.
+- **Files:** `src/rules.ts`, `src/client.tsx`, `src/game.ts` (opening pickups), and pickup tests.
+
 ### Arena movement features
 - **Status:** in progress — Copilot, 2026-11-19 14:14
 - **Requested by:** Playtest feedback
