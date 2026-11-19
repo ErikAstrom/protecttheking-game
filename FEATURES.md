@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Three.js arena renderer
-- **Status:** in progress — Copilot, 2026-11-19 14:19
-- **Requested by:** Playtest feedback
-- **Description:** Render all worlds and characters in 3D while keeping the whole-board camera and existing gameplay.
-- **Files:** `src/arena.tsx`, new renderer modules, dependency manifests, and renderer docs.
-- **Notes:** Implementation on `three-js`; keep Canvas as a fallback and preserve the existing replay pipeline.
-
 ### Sword
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 15:40
 - **Requested by:** Erik
@@ -93,6 +86,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Three.js arena renderer
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Render all worlds and characters in 3D while keeping the whole-board camera and existing gameplay.
+- **Notes:** Implemented in `Render arenas in Three.js` on `three-js`. Keeps the live and replay timing shared with the Canvas fallback.
 
 ### Match pickup count to players by default
 - **Status:** done — 2026-11-19

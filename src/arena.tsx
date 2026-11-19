@@ -9,6 +9,7 @@ import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from 
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 import { levelAt, stairAxisAt, WALKWAY } from './walkway.ts';
 import { drawMovementTerrain } from './movement-terrain-art.ts';
+import type { ThreeArena } from './arena-three.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -280,6 +281,9 @@ function draw(
 
 export function Arena({ state, id, onReplayCue }: { state: State; id: string; onReplayCue: (cue: ReplayCue) => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const webglRef = useRef<HTMLCanvasElement>(null);
+  const three = useRef<ThreeArena | null>(null);
+  const [useThree, setUseThree] = useState(false);
   const latest = useRef({ state, previous: state, received: 0 });
   const replayCue = useRef(onReplayCue);
   useEffect(() => { replayCue.current = onReplayCue; }, [onReplayCue]);
@@ -290,15 +294,47 @@ export function Arena({ state, id, onReplayCue }: { state: State; id: string; on
     latest.current = { state, previous: previous.round === state.round ? previous : state, received: performance.now() };
   }, [state]);
   useEffect(() => {
+    const canvas = webglRef.current;
+    if (!canvas) return;
+    let active = true;
+    let renderer: ThreeArena | undefined;
+    const onContextLost = () => {
+      active = false;
+      console.warn('WebGL context lost; using the Canvas arena.');
+      three.current = null;
+      setUseThree(false);
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
+    void import('./arena-three.ts').then(({ ThreeArena }) => {
+      if (!active) return;
+      const context = canvas.getContext('webgl2', { antialias: true });
+      if (!context) return;
+      renderer = new ThreeArena(canvas, context);
+      three.current = renderer;
+      setUseThree(true);
+    }).catch(error => {
+      if (active) console.warn('Three.js could not start; using the Canvas arena.', error);
+    });
+    return () => {
+      active = false;
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      three.current = null;
+      renderer?.dispose();
+    };
+  }, []);
+  useEffect(() => {
     const ctx = ref.current?.getContext('2d');
-    if (!ctx) return;
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let frame = 0;
     let started: number | undefined;
     let hit = false;
     let index = 0;
+    function paint(state: State, scene: ReplayFrame, next: ReplayFrame, fraction: number, time: number,
+      replay?: CaptureReplay, impact = false) {
+      if (three.current) three.current.draw(state, scene, next, id, fraction, time, replay, impact);
+      else if (ctx) draw(ctx, state, scene, next, id, fraction, time, replay, impact);
+    }
     function render(time: number) {
-      if (!ctx) return;
       const { state, previous, received } = latest.current;
       const smooth = isFractional(state.settings.movement);
       const replay = playingReplay ? state.replay : null;
@@ -320,7 +356,7 @@ export function Arena({ state, id, onReplayCue }: { state: State; id: string; on
           hit = true;
           replayCue.current('replay-impact');
         }
-        draw(ctx, state, scene, next, id, fraction, still ? 0 : at - first.now, replay, hit);
+        paint(state, scene, next, fraction, still ? 0 : at - first.now, replay, hit);
         if (elapsed >= duration + REPLAY.holdMs) {
           setPlayingReplay(false);
           return;
@@ -328,7 +364,7 @@ export function Arena({ state, id, onReplayCue }: { state: State; id: string; on
       } else {
         const interval = Math.max(TUNING.tickMs, state.now - previous.now);
         const fraction = smooth ? Math.max(0, Math.min(1, (time - received) / interval)) : 1;
-        draw(ctx, state, state, previous, id, 1 - fraction, still ? 0 : time);
+        paint(state, state, previous, 1 - fraction, still ? 0 : time);
       }
       frame = requestAnimationFrame(render);
     }
@@ -336,6 +372,7 @@ export function Arena({ state, id, onReplayCue }: { state: State; id: string; on
     return () => cancelAnimationFrame(frame);
   }, [id, playingReplay]);
   const replay = state.replay;
+  const boardLabel = playingReplay ? 'Capture replay board' : 'Full game board';
   const hunter = replay && state.players.find(player => player.id === replay.hunterId);
   const king = replay && state.players.find(player => player.id === replay.kingId);
   return <>
@@ -344,6 +381,9 @@ export function Arena({ state, id, onReplayCue }: { state: State; id: string; on
       <span>{hunter?.name} captured {king?.name}</span>
       <button onClick={() => setPlayingReplay(!playingReplay)}>{playingReplay ? 'Skip replay' : 'Watch replay'}</button>
     </section>}
-    <canvas ref={ref} width={WIDTH} height={HEIGHT} aria-label={playingReplay ? 'Capture replay board' : 'Full game board'} />
+    <canvas ref={webglRef} width={WIDTH} height={HEIGHT} style={useThree ? undefined : { display: 'none' }}
+      aria-label={boardLabel} data-renderer="three" />
+    <canvas ref={ref} width={WIDTH} height={HEIGHT} style={useThree ? { display: 'none' } : undefined}
+      aria-label={boardLabel} data-renderer="canvas" />
   </>;
 }

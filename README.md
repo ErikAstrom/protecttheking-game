@@ -22,6 +22,8 @@ For uneven teams, set **Balance teams with bots** to **On** and choose **Apply s
 
 ## Play
 
+The arena uses a fixed, whole-board Three.js camera. Controls and match rules are unchanged. Browsers without WebGL2 fall back to the Canvas renderer.
+
 Choose **World → Random each round** in Match settings to roll a map at the start of the match and again on **Next round**. The map never repeats back-to-back, and match scores carry over.
 
 Choose **Rooms & Corridors** for eight rooms on the standard 48×48 board, linked by corridors at least three tiles wide. Groups of rooms can run across or down the board, changing the routes between rounds. Each room has two exits, and wall segments are at least five tiles long.

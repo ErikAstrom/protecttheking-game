@@ -22,7 +22,7 @@ Agents are free — and expected — to edit this file as the project develops.
 
 **Protect the King** is a two-team party game about defending your own king while hunting the other.
 
-- Genre: Top-down 2D team chase/tag game.
+- Genre: Top-down team chase/tag game with a 3D arena and unchanged tile-based rules.
 - Platform: Desktop browser on the same LAN as a designated Node host.
 - Big-screen spectators use `/watch`. The read-only display shows the lobby, arena, score, timer, and replays without joining a team. The server rejects game commands on its spectator WebSocket.
 - Rounds: 90 seconds by default, configurable.
@@ -69,7 +69,7 @@ Default match: Ice movement in Penguin world on a 48×48 board (smaller than the
 ## 3. Tech stack
 
 - Language: TypeScript.
-- Engine / framework: React lobby and scoreboard, tilted Canvas 2D board, opt-in Web Audio music and cues.
+- Engine / framework: React lobby and scoreboard, Three.js orthographic arena with a Canvas 2D fallback, opt-in Web Audio music and cues.
 - Build tooling: TypeScript type-checking and Vite browser build.
 - Hosting: Node.js serves the build and owns match state; `ws` handles same-origin WebSockets. In-memory, single lobby, trusted LAN only.
 
@@ -93,7 +93,9 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/ice.ts` — pure Ice-movement physics (momentum, drift, glide, wall bounce); tests in `src/ice.test.ts`.
 - `src/server.ts` — HTTP host and WebSocket command handling.
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
-- `src/arena.tsx`, `src/audio.ts` — tilted board and procedural music and sound effects.
+- `src/arena.tsx` — shared live interpolation, replay timing, and Canvas fallback.
+- `src/arena-three.ts` — WebGL2 scene, orthographic camera, and models for the authoritative round state.
+- `src/audio.ts` — procedural music and sound effects.
 - Team colors and animal silhouettes identify players in live play, `/watch`, and replays; the white ring still identifies your own character.
 - `src/penguin.ts` — Penguin world drawing (ocean, ice floe, ice blocks, penguins), called from `arena.tsx`.
 
@@ -146,6 +148,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Render the arena in Three.js with a fixed orthographic camera so walls, stairs and characters have real depth without changing controls or tactics; retain Canvas for browsers without WebGL2.
 - 2026-11-19 — Default to one pickup per rostered player so small and large matches start with comparable item density per player.
 - 2026-11-19 — Offer random map rotation without back-to-back repeats and vary the orientation of whole Rooms formations so new rounds change chase routes, not just doorway positions.
 - 2026-11-19 — Replace sparse Rooms partitions with two-exit rooms and dedicated corridors, and connect the raised walkway to a third staircase near mid-map so players can switch between upper and lower chase routes.
