@@ -66,6 +66,14 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** new `src/holes.ts`, `src/holes.test.ts`; hooks in `src/game.ts`, `src/rules.ts`, `src/penguin.ts`/`src/arena.tsx` (drawing). Not `src/layout.ts` (that's "Open ice sheet layout").
 - **Notes:**
 
+### Open ice sheet layout
+- **Status:** in progress — Claude (subagent), 2026-11-19 14:20
+- **Requested by:** Erik
+- **Description:** "Make walls bigger and units bigger but less walls. It should also resemble an ice sheet more, where some walls are present, but more open areas to slide around more."
+- **Files:** new `src/icesheet.ts`, `src/icesheet.test.ts`; small hooks in `src/layout.ts` (pick layout by world), `src/game.ts` (1–2 lines in the constructor/`startRound`), `src/rules.ts` (default board size only); `AGENTS.md`
+- **Notes:**
+  - 2026-11-19 — Plan: Penguin world gets its own layout of a few chunky, mirrored icebergs/ice blocks with wide open lanes; Castle keeps the dense walls. Units/walls get bigger on screen by shrinking the default board (everything scales with `914 / size`), not by changing drawing code, so this stacks with the "larger characters" claim above without touching `arena.tsx`. Water holes are NOT part of this (main session builds them in `src/holes.ts`).
+
 ## Open
 
 _No open items._
