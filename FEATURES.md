@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Stronger and more frequent Space hazards
+- **Status:** in progress — Copilot, 2026-11-19 14:06
+- **Requested by:** Playtest feedback
+- **Description:** Increase tilt strength, tilt odds, and black hole spawn frequency in Space only.
+- **Files:** `src/rules.ts`, `src/arena.tsx`, hazard tests, and gameplay docs.
+
 ## Open
 
 ### Wire golden gun and splash sounds
