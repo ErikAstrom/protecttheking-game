@@ -57,6 +57,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Add climbable icebergs, rubble mounds, directional conveyors, and Space boost lanes.
 - **Files:** `src/game.ts`, `src/rules.ts`, `src/arena.tsx`, and dedicated terrain modules (no changes to Rooms wall generation).
 
+### Sword
+- **Status:** in progress — Claude (Erik's session), 2026-11-19 15:40
+- **Requested by:** Erik
+- **Description:** Common pickup. Space draws the sword for 10 seconds; while it's out, it chops down any enemy non-king you touch or get within reach of, any number of times. Chopped players respawn in their starting box after 3 seconds (same as being shot). It does nothing to kings (normal capture rules still apply).
+- **Files:** new `src/sword.ts`, `src/sword.test.ts`, `src/swordfx.ts`; small hooks in `src/rules.ts` (item, tuning, player field, slash state), `src/game.ts` (activate, chop check), `src/arena.tsx` (draw hook), `src/client.tsx` (HUD).
+- **Notes:**
+
 ## Open
 
 ### Wire golden gun and splash sounds
