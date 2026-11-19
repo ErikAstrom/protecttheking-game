@@ -7,6 +7,8 @@ export const DIRECTIONS = {
   'down-left': { x: -1, y: 1 }, 'down-right': { x: 1, y: 1 },
 } satisfies Record<string, Point>;
 export type Direction = keyof typeof DIRECTIONS;
+import type { Walkway } from './walkway.ts';
+
 export type Point = { x: number; y: number };
 export type Obstacle = Point & { kind: 'wall' | 'crate' | 'pillar' };
 export type TerrainPatch = Point & { width: number; height: number; kind: 'ice' | 'sand'; outline?: Point[] };
@@ -187,13 +189,14 @@ export type Player = Point & {
   respawnAt: number;
   outCause: 'shot' | 'drowned' | null;
   kills: number; deaths: number;
+  drop?: { at: number; from: number; to: number };
 };
 export type Result = { winner: Team | null; reason: 'capture' | 'timeout' | 'king-drowned' };
 export type ReplayFrame = {
   tilt?: Tilt;
   now: number; pickups: Pickup[]; traps: Trap[]; blackHole: BlackHole | null;
   players: Pick<Player, 'id' | 'team' | 'king' | 'x' | 'y' | 'strengthUntil' | 'paceUntil' | 'pace' |
-    'recoilUntil' | 'portalTrips' | 'respawnAt'>[];
+    'recoilUntil' | 'portalTrips' | 'respawnAt' | 'drop'>[];
 };
 export type CaptureReplay = {
   hunterId: string; kingId: string; contact: Point; frames: ReplayFrame[];
@@ -202,6 +205,7 @@ export type State = {
   blackHole: BlackHole | null;
   tilt?: Tilt;
   outline?: readonly Point[];
+  walkway?: Walkway;
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];

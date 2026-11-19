@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Raised walkway in Rooms & Corridors
-- **Status:** in progress — Copilot, 2026-11-19 14:01
-- **Requested by:** Playtest feedback
-- **Description:** Add a raised level with stairs and walk-off drops to Rooms & Corridors only.
-- **Files:** Rooms layout, movement and bot navigation hooks, Canvas rendering, and focused tests.
-- **Notes:** Use normal movement controls. The raised walkway is solid underneath; no stacked walkable floors.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -86,6 +79,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Raised walkway in Rooms & Corridors
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Add a raised level with stairs and walk-off drops to Rooms & Corridors only.
+- **Notes:** Implemented in `Add a raised walkway to Rooms and Corridors`. Uses normal controls in all three movement modes; the platform is solid underneath.
 
 ### Countdown music
 - **Status:** done — 2026-11-19

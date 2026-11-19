@@ -6,13 +6,14 @@ type Project = (x: number, y: number, z?: number) => Point;
 const GOLD = '#ffd23f';
 
 /** Bright tracer lines with a flash where the shot stopped; they fade out over GUN.tracerMs. */
-export function drawShots(ctx: CanvasRenderingContext2D, project: Project, shots: readonly Shot[], now: number) {
+export function drawShots(ctx: CanvasRenderingContext2D, project: Project, shots: readonly Shot[], now: number, elevation = (_point: Point) => 0) {
   for (const shot of shots) {
     const age = Math.max(0, now - shot.at) / GUN.tracerMs;
     if (age >= 1) continue;
     const alpha = 1 - age;
-    const from = project(shot.from.x, shot.from.y, 14);
-    const to = project(shot.to.x, shot.to.y, 14);
+    const z = 14 + elevation(shot.from);
+    const from = project(shot.from.x, shot.from.y, z);
+    const to = project(shot.to.x, shot.to.y, z);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.lineCap = 'round';

@@ -23,6 +23,7 @@ For uneven teams, set **Balance teams with bots** to **On** and choose **Apply s
 ## Play
 
 Choose **Rooms & Corridors** for a fresh arrangement of connected rooms and wall segments at least five tiles long each round.
+Use **WASD** or the arrow keys to climb the gold-marked stairs at either end of the raised walkway. Move off a side to drop back to the floor without taking damage.
 Choose **Space arena** for a starfield deck with staggered walls and a temporary black hole. Its purple ring marks the pull range. Steer away to escape; the hole itself never eliminates players. All maps have independently randomized corner cuts each round.
 
 - Penguin World has a faceted ice floe, and Castle Arena has clipped corners. The outline, obstacles, and irregular ice and quicksand patches are randomized each round; starting areas stay intact.

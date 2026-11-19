@@ -7,6 +7,7 @@ import { drawOrca } from './orca.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
+import { levelAt, WALKWAY } from './walkway.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -17,13 +18,15 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'outline' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement, world } = board.settings;
   const penguin = world === 'penguin';
   const space = world === 'space';
   const scale = 914 / size;
+  const { walkway } = board;
+  const tierHeight = Math.max(4, scale * 0.55);
   const tilt = scene.tilt ?? next.tilt;
   const angle = tiltAmount(tilt, scene.now + (next.now - scene.now) * fraction);
   function project(x: number, y: number, z = 0): Point {
@@ -137,11 +140,42 @@ function draw(
   }
 
   for (const trap of scene.traps) {
+    if (levelAt(walkway, trap)) continue;
     const p = project(trap.x, trap.y);
     ellipse(p.x, p.y, Math.max(9, scale * 0.68), Math.max(5, scale * 0.4), '#a25be36c', COLORS[trap.team]);
     text(GLYPHS.slow, p.x, p.y, 12, '#fff');
   }
   const actors: { depth: number; draw: () => void }[] = [];
+  if (walkway) {
+    const left = walkway.x - 0.5;
+    const top = walkway.y - 0.5;
+    const front = top + walkway.depth;
+    actors.push({ depth: front, draw: () => {
+      for (let column = 0; column < walkway.width; column++) {
+        const x = left + column;
+        const tier = levelAt(walkway, { x: walkway.x + column, y: walkway.y });
+        const z = tier * tierHeight;
+        const stairs = tier <= WALKWAY.stairs;
+        polygon('#30404e', [project(x, front, z), project(x + 1, front, z), project(x + 1, front), project(x, front)]);
+        polygon(stairs ? '#83969b' : '#596d7d', face(x, top, 1, walkway.depth, z));
+        if (stairs) {
+          polygon('#e6c480', face(x + 0.08, top, 0.12, walkway.depth, z));
+          polygon('#e6c480', face(x + 0.8, top, 0.12, walkway.depth, z));
+        } else {
+          polygon('#9ab7bf', face(x, front - 0.14, 1, 0.14, z));
+        }
+      }
+    } });
+  }
+  for (const trap of scene.traps) {
+    const tier = levelAt(walkway, trap);
+    if (!tier || !walkway) continue;
+    actors.push({ depth: walkway.y + walkway.depth + 0.001, draw: () => {
+      const p = project(trap.x, trap.y, tier * tierHeight);
+      ellipse(p.x, p.y, Math.max(9, scale * 0.68), Math.max(5, scale * 0.4), '#a25be36c', COLORS[trap.team]);
+      text(GLYPHS.slow, p.x, p.y, 12, '#fff');
+    } });
+  }
   for (const obstacle of board.obstacles) {
     actors.push({ depth: obstacle.y + 0.5, draw: () => {
       const { kind } = obstacle;
@@ -180,6 +214,12 @@ function draw(
     const blend = player.portalTrips === target.portalTrips ? fraction : 0;
     const x = player.x + (target.x - player.x) * blend;
     const y = player.y + (target.y - player.y) * blend;
+    const level = levelAt(walkway, { x, y });
+    const drawAt = scene.now + (next.now - scene.now) * fraction;
+    const drop = player.drop;
+    const progress = drop ? Math.max(0, Math.min(1, (drawAt - drop.at) / WALKWAY.dropMs)) : 1;
+    const z = tierHeight * (drop && level === drop.to ? drop.to + (drop.from - drop.to) * (1 - progress ** 2) : level);
+    const depth = walkway && z > 0 ? walkway.y + walkway.depth + y * 0.0001 : y;
     // Movement per server tick in tiles, for penguin facing, leaning and spray.
     const per = replay ? TUNING.tickMs / REPLAY.sampleMs : -1;
     const motion = player.portalTrips === target.portalTrips
@@ -189,10 +229,11 @@ function draw(
       (player.king ? 1.2 : 1) * (strong ? STRENGTH_SCALE : 1);
     const holder = board.players.find(candidate => candidate.id === player.id);
     if (!replay && holder && !holder.king && holder.inventory[0] === 'gun') {
-      actors.push({ depth: y + 0.001, draw: () => drawHeldGun(ctx, project, { x, y }, holder.facing, holder.id === id, r) });
+      actors.push({ depth: depth + 0.001, draw: () =>
+        drawHeldGun(ctx, (x, y, height = 0) => project(x, y, height + z), { x, y }, holder.facing, holder.id === id, r) });
     }
-    actors.push({ depth: y, draw: () => {
-      const p = project(x, y);
+    actors.push({ depth, draw: () => {
+      const p = project(x, y, z);
       const team = COLORS[player.team];
       ellipse(p.x, p.y + 2, r * 1.35, r * 0.72, '#07171c8f', team);
       if (player.id === id) ellipse(p.x, p.y + 2, r * 1.12, r * 0.51, '#0000', '#fff');
@@ -209,7 +250,7 @@ function draw(
   }
   actors.sort((left, right) => left.depth - right.depth);
   for (const actor of actors) actor.draw();
-  if (!replay) drawShots(ctx, project, board.shots, scene.now);
+  if (!replay) drawShots(ctx, project, board.shots, scene.now, point => levelAt(walkway, point) * tierHeight);
   if (!replay) drawSplashes(ctx, project, board.splashes, scene.now);
   if (replay) {
     for (const [participant, label, color] of [
@@ -219,12 +260,13 @@ function draw(
       if (!start) continue;
       const end = next.players.find(player => player.id === participant) ?? start;
       const blend = start.portalTrips === end.portalTrips ? fraction : 0;
-      const p = project(start.x + (end.x - start.x) * blend, start.y + (end.y - start.y) * blend);
+      const point = { x: start.x + (end.x - start.x) * blend, y: start.y + (end.y - start.y) * blend };
+      const p = project(point.x, point.y, levelAt(walkway, point) * tierHeight);
       ellipse(p.x, p.y + 2, Math.max(12, scale * 0.62), Math.max(7, scale * 0.34), `${color}40`, color);
       text(label, Math.max(60, Math.min(WIDTH - 60, p.x)), Math.min(HEIGHT - 14, p.y + (start.king ? 34 : 18)), 13, color);
     }
     if (impact) {
-      const p = project(replay.contact.x, replay.contact.y);
+      const p = project(replay.contact.x, replay.contact.y, levelAt(walkway, replay.contact) * tierHeight);
       ellipse(p.x, p.y, 22, 12, '#ffc65e36', '#ffcf70');
       text('✦', p.x, p.y - 3, 24, '#ffe097');
     }

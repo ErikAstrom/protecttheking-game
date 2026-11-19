@@ -8,6 +8,7 @@ import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, R
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
 import { generateRooms } from './rooms.ts';
+import { canTraverse, levelAt, roomWalkway, WALKWAY } from './walkway.ts';
 import { generateSpaceWalls, gravityStep } from './space.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
@@ -120,6 +121,7 @@ export class Game {
   reset(notice: string | null = null): void {
     delete this.state.tilt;
     delete this.state.outline;
+    delete this.state.walkway;
     this.scheduledTilt = undefined;
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
@@ -259,8 +261,8 @@ export class Game {
     this.replayFrames.push({
       now, pickups: pickups.slice(), traps: traps.slice(), blackHole,
       ...(tilt ? { tilt } : {}),
-      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt }) =>
-        ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt })),
+      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt, drop }) =>
+        ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt, ...(drop ? { drop } : {}) })),
     });
     while ((this.replayFrames[0]?.now ?? now) < now - REPLAY.windowMs) this.replayFrames.shift();
   }
@@ -324,6 +326,7 @@ export class Game {
   }
 
   private clearEffects(player: Player): void {
+    delete player.drop;
     Object.assign(player, {
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
       sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
@@ -346,6 +349,8 @@ export class Game {
     state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
     const layout = world === 'space' ? generateSpaceWalls : world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
     this.outline = state.outline = boardOutline(size, world, Math.random(), Math.random());
+    if (world === 'rooms') state.walkway = roomWalkway(size);
+    else delete state.walkway;
     state.obstacles = (this.layout ?? layout)(size)
       .filter(obstacle => onBoard(this.outline, obstacle, Math.SQRT1_2));
     state.terrain = world === 'rooms' || world === 'space' ? [] : generateTerrain(size);
@@ -423,6 +428,7 @@ export class Game {
   private spawnOpen(point: Point): boolean {
     const { settings, pickups, players, portals } = this.state;
     return !this.isBlocked(point, isFractional(settings.movement)) && !inHole(this.state.holes, point, -TUNING.pickupSpacing) &&
+      !levelAt(this.state.walkway, point) &&
       [...pickups, ...players, ...portals]
         .every(other => distance(other, point) >= TUNING.pickupSpacing);
   }
@@ -514,8 +520,10 @@ export class Game {
     const step = offset({ x: 0, y: 0 }, delta, 1 / steps);
     const { portalTrips, vaultUntil } = player;
     for (let index = 0; index < steps && this.state.phase === 'playing' && alive(player); index++) {
-      if (step.x && step.y && this.isBlocked(offset(player, step), true)) {
-        if (this.tryVault(player, step, now, true)) break;
+      const target = offset(player, step);
+      const traversable = canTraverse(this.state.walkway, player, target);
+      if (step.x && step.y && (!traversable || this.isBlocked(target, true))) {
+        if (traversable && this.tryVault(player, step, now, true)) break;
         if (!this.move(player, { x: step.x, y: 0 }, now, true) && this.state.phase === 'playing' && player.recoilUntil <= now) {
           this.move(player, { x: 0, y: step.y }, now, true);
         }
@@ -531,9 +539,11 @@ export class Game {
       player.inventory.shift();
       player.used++;
     }
-    const targets = this.state.players.filter(candidate => candidate !== player && alive(candidate));
+    const level = levelAt(this.state.walkway, player);
+    const targets = this.state.players.filter(candidate => candidate !== player && alive(candidate) &&
+      levelAt(this.state.walkway, candidate) === level);
     const shot = castShot(player, player.facing, player.team, targets,
-      point => this.isBlocked({ x: Math.round(point.x), y: Math.round(point.y) }),
+      point => levelAt(this.state.walkway, point) !== level || this.isBlocked({ x: Math.round(point.x), y: Math.round(point.y) }),
       GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius);
     this.state.shots.push({
       from: { x: player.x, y: player.y }, to: shot.to, team: player.team, at: now,
@@ -550,6 +560,7 @@ export class Game {
     victim.deaths++;
     victim.respawnAt = now + ms;
     victim.outCause = cause;
+    delete victim.drop;
     Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0 });
     this.velocities.delete(victim.id);
   }
@@ -573,12 +584,15 @@ export class Game {
   }
 
   private occupants(target: Point, player: Player, smooth: boolean): Player[] {
+    const level = levelAt(this.state.walkway, target);
     return this.state.players.filter(candidate => candidate !== player && alive(candidate) &&
+      Math.abs(levelAt(this.state.walkway, candidate) - level) <= 1 &&
       (smooth ? distance(candidate, target) <= 2 * TUNING.smoothRadius : sameTile(candidate, target)));
   }
 
   private move(player: Player, delta: Point, now: number, smooth: boolean): boolean {
     const target = offset(player, delta);
+    if (!canTraverse(this.state.walkway, player, target)) return false;
     if (this.isBlocked(target, smooth)) return this.tryVault(player, delta, now, smooth);
     const occupants = this.occupants(target, player, smooth);
     const opponent = occupants.find(candidate => candidate.team !== player.team && candidate.king !== player.king);
@@ -604,7 +618,8 @@ export class Game {
       const step = smooth ? offset({ x: 0, y: 0 }, delta, TUNING.pushTiles / (steps * Math.hypot(delta.x, delta.y))) : delta;
       for (let index = 0; index < steps; index++) {
         const pushed = offset(defender, step);
-        if (this.isBlocked(pushed, smooth) || this.occupants(pushed, defender, smooth).length) break;
+        if (!canTraverse(this.state.walkway, defender, pushed) || this.isBlocked(pushed, smooth) ||
+            this.occupants(pushed, defender, smooth).length) break;
         const teleported = this.stepTo(defender, pushed, now, smooth);
         if (smooth) this.nextPush.set(player.id, now + TUNING.smoothPushCooldownMs);
         if (teleported || !alive(defender)) break;
@@ -628,6 +643,7 @@ export class Game {
     const contact = offset(player, delta);
     for (let index = 1; length + index * stride <= limit; index++) {
       const landing = offset(contact, step, index);
+      if (!canTraverse(this.state.walkway, player, landing)) return false;
       const occupants = this.occupants(landing, player, smooth);
       if (occupants.some(other => other !== defender)) return false;
       if (this.isBlocked(landing, smooth)) {
@@ -649,7 +665,8 @@ export class Game {
     const scale = -TUNING.recoilDistance / (steps * Math.hypot(delta.x, delta.y));
     for (let index = 0; index < steps; index++) {
       const target = offset(player, delta, scale);
-      if (this.isBlocked(target, smooth) || this.occupants(target, player, smooth).length) break;
+      if (!canTraverse(this.state.walkway, player, target) || this.isBlocked(target, smooth) ||
+          this.occupants(target, player, smooth).length) break;
       if (this.stepTo(player, target, now, smooth) || !alive(player)) break;
     }
     return false;
@@ -660,6 +677,10 @@ export class Game {
     const exits = entered ? this.state.portals.filter(portal =>
       portal !== entered && !this.occupants(portal, player, smooth).length) : [];
     const destination = exits.length ? exits[Math.floor(Math.random() * exits.length)] : undefined;
+    const from = levelAt(this.state.walkway, player);
+    const to = levelAt(this.state.walkway, destination ?? target);
+    if (!destination && from - to > 1) player.drop = { at: now, from, to };
+    else if (destination || to > from || (player.drop && now - player.drop.at >= WALKWAY.dropMs)) delete player.drop;
     Object.assign(player, destination ?? target);
     if (destination) {
       player.portalTrips++;
@@ -670,6 +691,7 @@ export class Game {
   }
 
   private touches(a: Point, b: Point): boolean {
+    if (levelAt(this.state.walkway, a) !== levelAt(this.state.walkway, b)) return false;
     return isFractional(this.state.settings.movement) ? distance(a, b) <= TUNING.pickupRadius : sameTile(a, b);
   }
 

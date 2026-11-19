@@ -1,5 +1,6 @@
 import { castShot } from './gun.ts';
 import { boardOutline, onBoard } from './board-shape.ts';
+import { canTraverse, levelAt } from './walkway.ts';
 import { DIRECTIONS, GUN, TUNING, isFractional } from './rules.ts';
 import type { Direction, Player, Point, State } from './rules.ts';
 
@@ -52,7 +53,9 @@ function routeTo(state: State, bot: Player, goal: Point, quarry?: Player): Point
       const ny = y + step.y;
       if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
       const next = ny * size + nx;
-      if (blocked[next] || parents[next] !== -1 || !onBoard(outline, { x: nx, y: ny }, clearance)) continue;
+      const point = { x: nx, y: ny };
+      if (blocked[next] || parents[next] !== -1 || !onBoard(outline, point, clearance) ||
+          !canTraverse(state.walkway, { x, y }, point)) continue;
       parents[next] = here;
       queue[length++] = next;
     }
@@ -123,11 +126,14 @@ export class BotPilot {
     if (kind === 'speed') return direction !== null && bot.paceUntil <= state.now;
     if (kind !== 'gun') return false;
     const facing = direction ? DIRECTIONS[direction] : bot.facing;
-    return !!castShot(bot, facing, bot.team, state.players.filter(player => player !== bot && !player.respawnAt),
+    const level = levelAt(state.walkway, bot);
+    return !!castShot(bot, facing, bot.team, state.players.filter(player => player !== bot && !player.respawnAt &&
+      levelAt(state.walkway, player) === level),
       point => {
         const { x, y } = tile(point);
         const { size, world } = state.settings;
-        return !onBoard(state.outline ?? boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
+        return levelAt(state.walkway, point) !== level ||
+          !onBoard(state.outline ?? boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
       },
       GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius).hit;
   }

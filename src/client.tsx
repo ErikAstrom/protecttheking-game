@@ -414,6 +414,7 @@ function App() {
           {state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
           {state.settings.world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}
+          {state.walkway && <span>Raised walkway: climb the gold stairs or drop off the sides</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}

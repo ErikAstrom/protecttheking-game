@@ -32,6 +32,7 @@ Agents are free — and expected — to edit this file as the project develops.
 
 ### Core loop
 Rooms & Corridors is a separate selectable map. Randomized partitions create connected rooms with doorways and wall segments at least five tiles long; there are no scattered obstacles or terrain patches.
+Its raised walkway has stairs at both ends and safe drops off the sides. The deck is solid underneath; you cannot climb a ledge from the floor. Bots use the same height transitions. Pickups and teleporters spawn on the floor, and shots stay on the tier where they fire.
 
 Space arena is a starfield deck with three staggered bulkheads. During play a black hole spawns randomly in the central area, lasts 6.5 seconds, then waits 4–8 seconds before spawning again. Its visible field pulls nearby players even while idle, but players can steer out and nobody is eliminated by the hole itself. Other maps do not get this hazard.
 
@@ -80,6 +81,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/bots.ts` — host-side bot targeting, grid navigation, and item decisions; match and steering tests in `src/bots.test.ts`.
 - `src/layout.ts` — procedural obstacle layouts (Castle walls) and terrain patches.
 - `src/rooms.ts` — Rooms & Corridors wall layout.
+- `src/walkway.ts` — shared walkway geometry and elevation rules.
 - `src/space.ts`, `src/space-art.ts` — black hole pull and Space arena visuals. The host tracks the active black hole and records it in capture replays.
 - `src/icesheet.ts` — Penguin world's open ice-sheet layout and `openTiles`; tests in `src/icesheet.test.ts`. `Game` picks the layout by world unless a fixed layout is passed to its constructor.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
@@ -142,6 +144,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Prototype elevation on Rooms & Corridors using a solid deck with stairs and walk-off drops, without adding a jump key or stacked floors.
 - 2026-11-19 — Randomize both unused corner cuts independently on every map and vary room partitions each round without shortening walls below five tiles.
 - 2026-11-19 — Give Space arena an escapable, temporary black hole so gravity changes chase routes without becoming a new way to lose a round.
 - 2026-11-19 — Add Rooms & Corridors as a separate map — keep the other layouts while offering predictable doorways and team chokepoints.
