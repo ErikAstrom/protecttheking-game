@@ -1,9 +1,10 @@
 import { BotPilot } from './bots.ts';
+import { boardOutline, onBoard } from './board-shape.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
-import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TILT, TUNING, isFractional, matchStartError, roundStartsAt, surfaceAt, tiltSpeed } from './rules.ts';
+import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
 import { generateRooms } from './rooms.ts';
@@ -43,6 +44,8 @@ export class Game {
   private readonly replayFrames: ReplayFrame[] = [];
   private readonly bots = new BotPilot();
   private blocked = new Set<string>();
+  private outline = boardOutline(DEFAULT_SETTINGS.size, DEFAULT_SETTINGS.world);
+  private scheduledTilt: Tilt | undefined;
   private turn = 0;
   private readonly layout: ((size: number) => Obstacle[]) | undefined;
   private readonly holeLayout: (size: number, obstacles: Obstacle[]) => Hole[];
@@ -115,6 +118,8 @@ export class Game {
   }
 
   reset(notice: string | null = null): void {
+    delete this.state.tilt;
+    this.scheduledTilt = undefined;
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
       blackHole: null,
@@ -181,6 +186,9 @@ export class Game {
         this.state.phase = 'playing';
         this.state.deadline = now + settings.seconds * 1000;
         if (settings.world === 'space') this.scheduleBlackHole(now);
+        const startedAt = now + settings.seconds * 1000 * (TILT.firstFraction + Math.random() * (TILT.lastFraction - TILT.firstFraction));
+        const downhill = [DIRECTIONS.up, DIRECTIONS.down, DIRECTIONS.left, DIRECTIONS.right][Math.floor(Math.random() * 4)]!;
+        this.scheduledTilt = { downhill, startedAt, endsAt: startedAt + TILT.durationMs };
         this.recordReplayFrame(now);
       }
       return;
@@ -192,6 +200,9 @@ export class Game {
       this.end({ winner: this.timeoutWinner(), reason: 'timeout' });
       return;
     }
+    const tilt = this.scheduledTilt;
+    if (tilt && now >= tilt.startedAt && now < tilt.endsAt) this.state.tilt = tilt;
+    else if (this.state.tilt) delete this.state.tilt;
     this.state.traps = this.state.traps.filter(trap => trap.expires > now);
     this.state.shots = this.state.shots.filter(shot => now - shot.at < GUN.tracerMs);
     this.state.splashes = this.state.splashes.filter(splash => now - splash.at < HOLES.splashMs);
@@ -219,12 +230,12 @@ export class Game {
       if (!direction || player.recoilUntil > now || (this.nextMove.get(player.id) ?? 0) > now) continue;
       attemptedMove = true;
       const delta = DIRECTIONS[direction];
-      const interval = this.moveInterval(player, now);
+      const interval = this.moveInterval(player, now, delta);
       if (settings.movement === 'smooth') {
         this.steer(player, delta, interval, elapsed, now);
       } else {
         this.move(player, delta, now, false);
-        this.nextMove.set(player.id, now + this.moveInterval(player, now));
+        this.nextMove.set(player.id, now + this.moveInterval(player, now, delta));
       }
       if (this.state.phase !== 'playing') return;
     }
@@ -245,20 +256,21 @@ export class Game {
     const last = this.replayFrames.at(-1);
     if (!final && last && now - last.now < REPLAY.sampleMs) return;
     if (last?.now === now) this.replayFrames.pop();
-    const { players, pickups, traps, blackHole } = this.state;
+    const { players, pickups, traps, blackHole, tilt } = this.state;
     this.replayFrames.push({
       now, pickups: pickups.slice(), traps: traps.slice(), blackHole,
+      ...(tilt ? { tilt } : {}),
       players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt }) =>
         ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt })),
     });
     while ((this.replayFrames[0]?.now ?? now) < now - REPLAY.windowMs) this.replayFrames.shift();
   }
 
-  private moveInterval(player: Player, now: number): number {
+  private moveInterval(player: Player, now: number, direction: Point | null): number {
     const base = player.paceUntil <= now ? TUNING.moveMs
       : player.pace === 'speed' ? TUNING.fastMoveMs : TUNING.slowMoveMs;
     const surface = surfaceAt(this.state.terrain, player);
-    return surface ? base * SURFACES[surface].intervalFactor : base;
+    return base * (surface ? SURFACES[surface].intervalFactor : 1) / tiltSpeed(this.state.tilt, direction);
   }
 
   private scheduleBlackHole(now: number): void {
@@ -329,15 +341,19 @@ export class Game {
     state.shots = [];
     state.splashes = [];
     state.replay = null;
+    delete state.tilt;
     state.notice = null;
     state.now = now;
     state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
     const layout = world === 'space' ? () => [] : world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
-    state.obstacles = (this.layout ?? layout)(size);
+    this.outline = boardOutline(size, world);
+    state.obstacles = (this.layout ?? layout)(size)
+      .filter(obstacle => world === 'rooms' || world === 'space' || onBoard(this.outline, obstacle, Math.SQRT1_2));
     state.terrain = world === 'rooms' || world === 'space' ? [] : generateTerrain(size);
     state.blackHole = null;
     this.gravityProgress.clear();
-    state.holes = world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
+    state.holes = world === 'penguin' ? this.holeLayout(size, state.obstacles)
+      .filter(hole => onBoard(this.outline, hole, hole.radius)) : [];
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();
     this.bots.reset();
@@ -433,11 +449,9 @@ export class Game {
   }
 
   private isBlocked(tile: Point, smooth = false): boolean {
-    const { size } = this.state.settings;
-    if (!smooth) return tile.x < 0 || tile.y < 0 || tile.x >= size || tile.y >= size || this.blocked.has(tileKey(tile));
+    if (!onBoard(this.outline, tile, smooth ? TUNING.smoothRadius : 0)) return true;
+    if (!smooth) return this.blocked.has(tileKey(tile));
     const radius = TUNING.smoothRadius;
-    if (tile.x - radius < -0.5 || tile.y - radius < -0.5 ||
-      tile.x + radius > size - 0.5 || tile.y + radius > size - 0.5) return true;
     for (let y = Math.round(tile.y - radius); y <= Math.round(tile.y + radius); y++) {
       for (let x = Math.round(tile.x - radius); x <= Math.round(tile.x + radius); x++) {
         if (this.blocked.has(tileKey({ x, y })) &&
@@ -480,7 +494,7 @@ export class Game {
   private glide(player: Player, direction: Point | null, elapsed: number, now: number): boolean {
     const last = this.velocities.get(player.id) ?? { x: 0, y: 0 };
     if (elapsed <= 0 || (!direction && !last.x && !last.y)) return false;
-    const topSpeed = ICE.topSpeedScale / this.moveInterval(player, now);
+    const topSpeed = ICE.topSpeedScale / this.moveInterval(player, now, direction);
     const velocity = iceVelocity(last, direction, topSpeed, elapsed);
     const { x, y, portalTrips, vaultUntil } = player;
     this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);

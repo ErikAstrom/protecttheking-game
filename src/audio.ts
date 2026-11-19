@@ -3,7 +3,7 @@ import type { Shot } from './rules.ts';
 export type ReplayCue = 'replay-start' | 'replay-impact';
 type StandardCue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'king-drowned' | 'urgent' | ReplayCue;
 type GoldenGunCue = 'golden-gun-spawn' | 'golden-gun-pickup' | 'golden-gun-fire';
-type Cue = StandardCue | GoldenGunCue;
+type Cue = StandardCue | GoldenGunCue | 'board-tilt';
 
 const CUES: Record<StandardCue, number[]> = {
   pickup: [72, 79, 84], use: [60, 67, 76], trap: [56, 49, 44],
@@ -105,6 +105,12 @@ export class GameAudio {
   cue(cue: Cue) {
     if (this.context.state !== 'running') return;
     const start = this.context.currentTime + 0.02;
+    if (cue === 'board-tilt') {
+      this.note(35, start, 1.15, 0.13, 'triangle', this.context.destination);
+      this.note(41, start + 0.12, 0.95, 0.09, 'sawtooth', this.context.destination);
+      this.note(34, start + 0.56, 1.1, 0.11, 'triangle', this.context.destination);
+      return;
+    }
     if (cue === 'golden-gun-spawn' || cue === 'golden-gun-pickup' || cue === 'golden-gun-fire') {
       const notes = GOLDEN_GUN_CUES[cue];
       if (cue !== 'golden-gun-fire' && this.timer !== undefined) {

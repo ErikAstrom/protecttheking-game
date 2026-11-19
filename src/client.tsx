@@ -90,6 +90,13 @@ function RoundCountdown({ state }: { state: State }) {
   </div>;
 }
 
+function TiltNotice({ state }: { state: State }) {
+  const downhill = state.phase === 'playing' && state.tilt?.downhill;
+  if (!downhill) return null;
+  const direction = downhill.x ? (downhill.x > 0 ? 'right' : 'left') : (downhill.y > 0 ? 'down' : 'up');
+  return <div className="tilt-notice" role="status">Board tilted! Faster {direction}, slower the other way.</div>;
+}
+
 function Viewer({ state, connected, error, soundControl, onReplayCue }: {
   state: State | null; connected: boolean; error: string;
   soundControl: React.ReactNode; onReplayCue: (cue: ReplayCue) => void;
@@ -143,6 +150,7 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
         <div className="viewer-board round-board">
           <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id="" onReplayCue={onReplayCue} />
           <RoundCountdown state={state} />
+          <TiltNotice state={state} />
         </div>
       </>}
     </>}
@@ -244,6 +252,7 @@ function App() {
     engine.setMusic(connected && state?.phase === 'playing');
     if (!connected || !state || !previous || state === previous) return;
     if (state.phase === 'playing' && previous.phase !== 'playing') engine.cue('round');
+    if (state.phase === 'playing' && state.tilt && state.tilt.startedAt !== previous.tilt?.startedAt) engine.cue('board-tilt');
     if (state.result && !previous.result) engine.cue(state.result.reason);
     if (previous.phase === 'playing' && state.round === previous.round) {
       const shots = newShotCount(previous.shots, state.shots);
@@ -385,6 +394,7 @@ function App() {
         <div className="round-board">
           <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
           <RoundCountdown state={state} />
+          <TiltNotice state={state} />
         </div>
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>Round R badge: red team</span><span>Square B badge: blue team</span>

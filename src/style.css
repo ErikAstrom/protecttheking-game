@@ -27,6 +27,11 @@ a { color: #a4efff; }
 .viewer-wait { text-align: center; margin-top: 2rem; }
 .viewer-board canvas { width: min(100%, max(280px, calc((100dvh - 13rem) * 1.6))); }
 .round-board { position: relative; }
+.tilt-notice {
+  position: absolute; inset: auto 0 0.65rem; width: fit-content; max-width: 90%; margin-inline: auto;
+  padding: 0.35rem 0.65rem; border: 1px solid #ffc46e; border-radius: 0.4rem;
+  background: #0b1321; color: #ffda9b; text-align: center; pointer-events: none;
+}
 .round-countdown {
   position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
   pointer-events: none; text-align: center; color: #fff5d5;

@@ -53,7 +53,16 @@ export function generateTerrain(size: number, random = Math.random): TerrainPatc
     const y = sectorEdge(row, size) + LANE_MARGIN;
     const width = sectorEdge(column + 1, size) - LANE_MARGIN - x;
     const height = sectorEdge(row + 1, size) - LANE_MARGIN - y;
-    patches.push({ x, y, width, height, kind }, { x: size - x - width, y: size - y - height, width, height, kind });
+    const outline = Array.from({ length: 10 }, (_, index) => {
+      const angle = index * Math.PI / 5;
+      const ripple = 0.66 + random() * 0.29;
+      return {
+        x: x + (width - 1) / 2 + Math.cos(angle) * width * 0.5 * ripple,
+        y: y + (height - 1) / 2 + Math.sin(angle) * height * 0.5 * ripple,
+      };
+    });
+    patches.push({ x, y, width, height, kind, outline },
+      { x: size - x - width, y: size - y - height, width, height, kind, outline: outline.map(point => mirror(point, size)) });
   }
   return patches;
 }

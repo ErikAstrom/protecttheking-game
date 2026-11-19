@@ -1,5 +1,5 @@
 // Penguin world visuals: ocean, ice floe, ice blocks and penguins. Drawing only — no game rules here.
-import { HOLES } from './rules.ts';
+import { HOLES, terrainOutline } from './rules.ts';
 import type { Hole, Obstacle, Point, Splash, TerrainPatch } from './rules.ts';
 
 export type Project = (x: number, y: number, z?: number) => Point;
@@ -39,7 +39,7 @@ function oval(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
 
 /** Ocean background, the floating ice floe (with visible thickness), cracks, and tinted team nests. */
 export function drawIceFloe(
-  ctx: CanvasRenderingContext2D, project: Project, size: number, width: number, height: number, time: number,
+  ctx: CanvasRenderingContext2D, project: Project, size: number, width: number, height: number, time: number, outline: Point[],
 ) {
   const sea = ctx.createLinearGradient(0, 0, 0, height);
   sea.addColorStop(0, OCEAN);
@@ -74,41 +74,28 @@ export function drawIceFloe(
     ], '#d8eef6', '#7fc3d8');
   }
 
-  const a = project(-0.5, -0.5), b = project(size - 0.5, -0.5);
-  const c = project(size - 0.5, size - 0.5), d = project(-0.5, size - 0.5);
   const thickness = 24;
-
-  // Foam ring where the floe meets the water.
   const foam = 5 + Math.sin(time / 500) * 1.5;
-  shape(ctx, [
-    { x: a.x - foam, y: a.y - foam }, { x: b.x + foam, y: b.y - foam },
-    { x: c.x + foam, y: c.y + thickness + foam }, { x: d.x - foam, y: d.y + thickness + foam },
-  ], '#cfeaf455');
-
-  // Ice thickness on the near and side edges.
-  shape(ctx, [d, c, { x: c.x, y: c.y + thickness }, { x: d.x, y: d.y + thickness }], ICE_EDGE);
-  shape(ctx, [b, c, { x: c.x, y: c.y + thickness }, { x: b.x, y: b.y + thickness * 0.4 }], ICE_DEEP);
-  shape(ctx, [a, d, { x: d.x, y: d.y + thickness }, { x: a.x, y: a.y + thickness * 0.4 }], ICE_DEEP);
-  ctx.strokeStyle = '#ffffff55';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let line = 1; line < 3; line++) {
-    ctx.moveTo(d.x, d.y + (thickness * line) / 3);
-    ctx.lineTo(c.x, c.y + (thickness * line) / 3);
-  }
-  ctx.stroke();
+  const underside = outline.map(({ x, y }) => ({ x, y: y + thickness }));
+  shape(ctx, underside, ICE_DEEP, '#cfeaf455', foam * 2);
+  outline.forEach((point, index) => {
+    const next = (index + 1) % outline.length;
+    shape(ctx, [point, outline[next]!, underside[next]!, underside[index]!], index % 2 ? ICE_DEEP : ICE_EDGE);
+  });
 
   // The slab itself.
-  const top = ctx.createLinearGradient(0, a.y, 0, d.y);
+  const top = ctx.createLinearGradient(0, 29, 0, 575);
   top.addColorStop(0, ICE_SHADE);
   top.addColorStop(0.5, ICE_TOP);
   top.addColorStop(1, '#d6edf6');
-  shape(ctx, [a, b, c, d], '#000');
+  shape(ctx, outline, '#000');
   ctx.fillStyle = top;
   ctx.fill();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 2;
   ctx.stroke();
+  ctx.save();
+  ctx.clip();
 
   // Cracks and scuffs.
   const crack = seeded(size * 131 + 7);
@@ -141,6 +128,7 @@ export function drawIceFloe(
     [project(x, y), project(x + w, y), project(x + w, y + h), project(x, y + h)];
   shape(ctx, face(-0.5, -0.5, 7, 5), '#ff737b30', '#ff737b66');
   shape(ctx, face(size - 7.5, size - 5.5, 7, 5), '#62bcff30', '#62bcff66');
+  ctx.restore();
 }
 
 /** Obstacles as packed ice: walls are ice blocks (plain tops, so neighbouring blocks merge into one iceberg), crates are snow-capped blocks, pillars are tall ice spires. */
@@ -170,26 +158,26 @@ export function drawIceBlock(ctx: CanvasRenderingContext2D, project: Project, ob
 
 /** Terrain patches in Penguin world: ice patches are dark, glassy "black ice"; quicksand becomes deep slush. */
 export function drawPenguinTerrain(ctx: CanvasRenderingContext2D, project: Project, terrain: readonly TerrainPatch[]) {
-  const face = (fx: number, fy: number, w: number, d: number) =>
-    [project(fx, fy), project(fx + w, fy), project(fx + w, fy + d), project(fx, fy + d)];
-  for (const { x, y, width, height, kind } of terrain) {
+  for (const patch of terrain) {
+    const { x, y, width, height, kind } = patch;
     const left = x - 0.5, top = y - 0.5;
+    shape(ctx, terrainOutline(patch).map(({ x, y }) => project(x, y)),
+      kind === 'ice' ? '#79bfdc' : '#b9c9d2', kind === 'ice' ? '#2f7aa3' : '#7c93a1');
+    ctx.save();
+    ctx.clip();
     if (kind === 'ice') {
-      shape(ctx, face(left, top, width, height), '#4f9cc2', '#2f7aa3');
-      shape(ctx, face(left + 0.3, top + 0.3, width - 0.6, height - 0.6), '#79bfdc');
       for (let i = 1; i < 4; i++) {
         const sx = left + width * i / 4, sy = top + height * i / 4;
         shape(ctx, [project(sx - width * 0.14, sy + height * 0.11), project(sx + width * 0.14, sy - height * 0.16),
           project(sx + width * 0.03, sy + height * 0.08)], '#f2fdffaa');
       }
     } else {
-      shape(ctx, face(left, top, width, height), '#9fb3bf', '#7c93a1');
-      shape(ctx, face(left + 0.25, top + 0.25, width - 0.5, height - 0.5), '#b9c9d2');
       const random = seeded(Math.round(x * 31 + y * 17 + width));
       for (let i = 0; i < width * height / 6; i++) {
         const p = project(left + 0.4 + random() * (width - 0.8), top + 0.4 + random() * (height - 0.8));
         oval(ctx, p.x, p.y, 3 + random() * 3, 1.5 + random() * 1.5, '#8aa1ae');
       }
+      ctx.restore();
     }
   }
 }

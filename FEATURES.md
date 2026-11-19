@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Shaped arenas, natural terrain, and sudden tilt
-- **Status:** in progress — Copilot, 2026-11-19 13:34
-- **Requested by:** Playtest feedback
-- **Description:** Give both worlds non-square boundaries and irregular terrain. Add a brief, synchronized tilt that favors downhill movement without moving idle players, with an opt-in ominous musical cue.
-- **Files:** Arena layout and rendering, terrain rules, movement, bot navigation, and audio.
-
 ### Penguins vs. Orcas
 - **Status:** in progress — Copilot, 2026-11-19 13:41
 - **Requested by:** Playtest feedback
@@ -112,6 +106,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Give the Golden Gun a bigger, distinct musical cue. If a king falls into water, immediately award the opposing team one point and end the round.
 - **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/holes.test.ts`
 - **Notes:** Completed in `Make Golden Gun fanfares bigger and score king falls`. Non-kings still respawn normally. A king's fall only ends the match when the point reaches the configured target.
+
+### Shaped arenas, natural terrain, and sudden tilt
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Non-square arenas, irregular mirrored terrain, and a brief tilt event with directional speed changes and an opt-in musical cue.
+- **Notes:** Completed in `Shape arenas and add a sudden tilt event`. Verified movement in all three modes and the direction announcement in the live viewer.
 
 ### Clear team badges
 - **Status:** done — 2026-11-19

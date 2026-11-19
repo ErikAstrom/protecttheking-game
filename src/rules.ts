@@ -9,16 +9,37 @@ export const DIRECTIONS = {
 export type Direction = keyof typeof DIRECTIONS;
 export type Point = { x: number; y: number };
 export type Obstacle = Point & { kind: 'wall' | 'crate' | 'pillar' };
-export type TerrainPatch = Point & { width: number; height: number; kind: 'ice' | 'sand' };
+export type TerrainPatch = Point & { width: number; height: number; kind: 'ice' | 'sand'; outline?: Point[] };
 export const SURFACES = {
   ice: { label: 'Ice', intervalFactor: 0.7, turnMs: 200 },
   sand: { label: 'Quicksand', intervalFactor: 1.7, turnMs: 0 },
 } as const;
 
+export function terrainOutline({ x, y, width, height, outline }: TerrainPatch): readonly Point[] {
+  return outline ?? [{ x: x - 0.5, y: y - 0.5 }, { x: x + width - 0.5, y: y - 0.5 },
+    { x: x + width - 0.5, y: y + height - 0.5 }, { x: x - 0.5, y: y + height - 0.5 }];
+}
+
+function insideTerrain(outline: readonly Point[], { x, y }: Point): boolean {
+  let inside = false;
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i]!, b = outline[(i + 1) % outline.length]!;
+    if ((a.y > y) !== (b.y > y) && x < a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y)) inside = !inside;
+  }
+  return inside;
+}
+
 export function surfaceAt(terrain: readonly TerrainPatch[], point: Point) {
-  return terrain.find(({ x, y, width, height }) =>
+  return terrain.find(({ x, y, width, height, outline }) =>
     point.x >= x - 0.5 && point.x < x + width - 0.5 &&
-    point.y >= y - 0.5 && point.y < y + height - 0.5)?.kind;
+    point.y >= y - 0.5 && point.y < y + height - 0.5 && (!outline || insideTerrain(outline, point)))?.kind;
+}
+export type Tilt = { downhill: Point; startedAt: number; endsAt: number };
+export const TILT = { durationMs: 4000, firstFraction: 0.3, lastFraction: 0.5, speedGain: 0.32 } as const;
+export function tiltSpeed(tilt: Tilt | undefined, direction: Point | null): number {
+  if (!tilt || !direction) return 1;
+  return 1 + TILT.speedGain * (direction.x * tilt.downhill.x + direction.y * tilt.downhill.y) /
+    (Math.hypot(direction.x, direction.y) || 1);
 }
 export const ITEMS = {
   strength: { name: 'Strength', color: '#ffc46e' },
@@ -150,6 +171,7 @@ export type Player = Point & {
 };
 export type Result = { winner: Team | null; reason: 'capture' | 'timeout' | 'king-drowned' };
 export type ReplayFrame = {
+  tilt?: Tilt;
   now: number; pickups: Pickup[]; traps: Trap[]; blackHole: BlackHole | null;
   players: Pick<Player, 'id' | 'team' | 'king' | 'x' | 'y' | 'strengthUntil' | 'paceUntil' | 'pace' |
     'recoilUntil' | 'portalTrips' | 'respawnAt'>[];
@@ -159,6 +181,7 @@ export type CaptureReplay = {
 };
 export type State = {
   blackHole: BlackHole | null;
+  tilt?: Tilt;
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];

@@ -1,4 +1,5 @@
 import { castShot } from './gun.ts';
+import { boardOutline, onBoard } from './board-shape.ts';
 import { DIRECTIONS, GUN, TUNING, isFractional } from './rules.ts';
 import type { Direction, Player, Point, State } from './rules.ts';
 
@@ -11,6 +12,8 @@ type Plan = { at: number; route: Point[]; goal: Point | undefined; portalTrips: 
 
 function routeTo(state: State, bot: Player, goal: Point, quarry?: Player): Point[] {
   const { size } = state.settings;
+  const outline = boardOutline(size, state.settings.world);
+  const clearance = isFractional(state.settings.movement) ? TUNING.smoothRadius : 0;
   const key = ({ x, y }: Point) => y * size + x;
   const start = key(tile(bot));
   const target = key(tile(goal));
@@ -49,7 +52,7 @@ function routeTo(state: State, bot: Player, goal: Point, quarry?: Player): Point
       const ny = y + step.y;
       if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
       const next = ny * size + nx;
-      if (blocked[next] || parents[next] !== -1) continue;
+      if (blocked[next] || parents[next] !== -1 || !onBoard(outline, { x: nx, y: ny }, clearance)) continue;
       parents[next] = here;
       queue[length++] = next;
     }
@@ -123,8 +126,8 @@ export class BotPilot {
     return !!castShot(bot, facing, bot.team, state.players.filter(player => player !== bot && !player.respawnAt),
       point => {
         const { x, y } = tile(point);
-        const { size } = state.settings;
-        return x < 0 || y < 0 || x >= size || y >= size || state.obstacles.some(wall => wall.x === x && wall.y === y);
+        const { size, world } = state.settings;
+        return !onBoard(boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
       },
       GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius).hit;
   }

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReplayCue } from './audio.ts';
+import { boardOutline } from './board-shape.ts';
 import { drawHeldGun, drawShots } from './gunfx.ts';
 import { drawBlackHole, drawStars } from './space-art.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
-import { ITEMS, REPLAY, TUNING, isFractional } from './rules.ts';
+import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State, Team } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
@@ -22,9 +23,13 @@ function draw(
   const penguin = world === 'penguin';
   const space = world === 'space';
   const scale = 914 / size;
+  const tilt = scene.tilt;
+  const angle = tilt ? Math.min(1, Math.max(0, (scene.now - tilt.startedAt) / 180)) : 0;
   function project(x: number, y: number, z = 0): Point {
     const depth = (y + 0.5) / size;
-    return { x: WIDTH / 2 + (x + 0.5 - size / 2) * scale * (0.83 + depth * 0.17), y: 29 + depth * 546 - z };
+    const across = (x + 0.5 - size / 2) * scale * (0.83 + depth * 0.17);
+    const lean = tilt ? angle * (tilt.downhill.x * across * 0.046 + tilt.downhill.y * (depth - 0.5) * 55) : 0;
+    return { x: WIDTH / 2 + across, y: 29 + depth * 546 - z + lean };
   }
   function polygon(fill: string, points: Point[]) {
     ctx.beginPath();
@@ -69,25 +74,30 @@ function draw(
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   if (space) drawStars(ctx, WIDTH, HEIGHT);
+  const outline = boardOutline(size, world).map(({ x, y }) => project(x, y));
   if (penguin) {
-    drawIceFloe(ctx, project, size, WIDTH, HEIGHT, time);
+    drawIceFloe(ctx, project, size, WIDTH, HEIGHT, time, outline);
+    ctx.save();
+    ctx.clip(new Path2D(`M ${outline.map(({ x, y }) => `${x},${y}`).join(' L ')} Z`));
     drawPenguinTerrain(ctx, project, board.terrain);
     drawHoles(ctx, project, board.holes, time);
+    ctx.restore();
   } else {
-    const [a, b, c, d] = face(-0.5, -0.5, size, size);
-    polygon(space ? '#0d0e25' : '#0b2228', [d, c, { x: c.x, y: c.y + 21 }, { x: d.x, y: d.y + 21 }]);
-    const turf = ctx.createLinearGradient(0, a.y, 0, d.y);
+    const extruded = outline.map(({ x, y }) => ({ x, y: y + 21 }));
+    polygon(space ? '#0d0e25' : '#0b2228', extruded);
+    const turf = ctx.createLinearGradient(0, 29, 0, 575);
     turf.addColorStop(0, space ? '#302953' : '#315749');
     turf.addColorStop(1, space ? '#19182f' : '#23453c');
     ctx.fillStyle = turf;
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    for (const point of [b, c, d]) ctx.lineTo(point.x, point.y);
+    outline.forEach(({ x, y }, i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = space ? '#a48bf1' : '#578187';
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.save();
+    ctx.clip();
     const laneWidth = 2;
     const middle = (size - laneWidth - 1) / 2;
     const cobble = space ? '#8b7ee94a' : '#78898469';
@@ -99,11 +109,13 @@ function draw(
       polygon('#b5beb047', face(i, middle + 0.3, cobbleStride * 0.65, 0.48));
       polygon('#b5beb047', face(middle + 0.86, i, 0.48, cobbleStride * 0.65));
     }
-    for (const { x, y, width, height, kind } of board.terrain) {
+    for (const patch of board.terrain) {
+      const { x, y, width, height, kind } = patch;
       const ice = kind === 'ice';
       const left = x - 0.5, top = y - 0.5;
-      polygon(ice ? '#5d9bb4' : '#895b3e', face(left, top, width, height));
-      polygon(ice ? '#93d3dc' : '#b78354', face(left + 0.23, top + 0.23, width - 0.46, height - 0.46));
+      polygon(ice ? '#93d3dc' : '#b78354', terrainOutline(patch).map(({ x, y }) => project(x, y)));
+      ctx.save();
+      ctx.clip();
       for (let i = 1; i < 4; i++) {
         const sx = left + width * i / 4;
         const sy = top + height * (ice ? i : 4 - i) / 4;
@@ -114,6 +126,7 @@ function draw(
           const point = project(sx, sy);
           ellipse(point.x, point.y, Math.max(4, width * scale * 0.1), Math.max(2, height * scale * 0.042), '#865c47', '#d4a36a');
         }
+        ctx.restore();
       }
     }
     if (movement === 'classic') {
@@ -136,6 +149,7 @@ function draw(
     text('♜', crest.x, crest.y - 2, 36, '#90c6be45');
     polygon('#ff737b24', face(-0.5, -0.5, 7, 5));
     polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
+    ctx.restore();
   }
   if (space && scene.blackHole) drawBlackHole(ctx, project, scene.blackHole, time);
   for (const [index, point] of board.portals.entries()) {
