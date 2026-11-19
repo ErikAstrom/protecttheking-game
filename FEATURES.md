@@ -59,6 +59,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Show characters 25% larger and default to four teleporters with random exits.
 - **Files:** `src/rules.ts`, `src/game.ts`, `src/arena.tsx`, `src/client.tsx`, portal test fixtures and a focused portal test file.
 
+### Water holes in the ice
+- **Status:** in progress — Claude (Erik's session), 2026-11-19 14:35 (starts after Golden gun lands, since it reuses its death/respawn)
+- **Requested by:** Erik
+- **Description:** Holes in the ice sheet where you fall into the water. Falling in kills you and you respawn in your starting box, like being shot.
+- **Files:** new `src/holes.ts`, `src/holes.test.ts`; hooks in `src/game.ts`, `src/rules.ts`, `src/penguin.ts`/`src/arena.tsx` (drawing). Not `src/layout.ts` (that's "Open ice sheet layout").
+- **Notes:**
+
 ## Open
 
 _No open items._
