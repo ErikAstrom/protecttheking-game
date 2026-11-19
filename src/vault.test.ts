@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
 import { DEFAULT_SETTINGS, TUNING } from './rules.ts';
+import { startActiveRound } from './test-round.ts';
 import type { Movement, Obstacle } from './rules.ts';
 
 function setup(movement: Movement, obstacles: Obstacle[] = []) {
   const game = new Game(() => obstacles, () => []);
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, movement, pickupCount: 0, portalCount: 0 }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
   Object.assign(red, { x: 10, y: 10, inventory: ['vault'] });
