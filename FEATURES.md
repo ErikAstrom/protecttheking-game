@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Golden Gun fanfare and king water loss
+- **Status:** in progress — Copilot, 2026-11-19 13:30
+- **Requested by:** Playtest feedback
+- **Description:** Give the Golden Gun a bigger, distinct musical cue. If a king falls into water, immediately award the opposing team one point and end the round.
+- **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/holes.test.ts`
+- **Notes:** Preserve normal respawns for non-kings and the normal match point target.
+
 ## Open
 
 ### Wire golden gun and splash sounds
