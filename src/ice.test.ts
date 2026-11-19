@@ -18,7 +18,7 @@ function simulate(start: Point, direction: Point | null, ms: number, step = TUNI
 
 function iceGame() {
   const game = new Game(() => []);
-  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 30, pickupCount: 0, portalPairs: 0 }), undefined);
+  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 30, pickupCount: 0, portalCount: 0 }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
   game.state.terrain = [];

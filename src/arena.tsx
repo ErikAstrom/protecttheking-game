@@ -6,7 +6,8 @@ import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
-const PORTAL_COLORS = ['#d4adff', '#58f5e1', '#ffcf70', '#ffe6f4'];
+const PORTAL_COLOR = '#d4adff';
+const CHARACTER_SCALE = 1.25;
 const WIDTH = 1000;
 const HEIGHT = 620;
 
@@ -118,14 +119,11 @@ function draw(
     polygon('#ff737b24', face(-0.5, -0.5, 7, 5));
     polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
   }
-  for (const [index, pair] of board.portals.entries()) {
-    const color = PORTAL_COLORS[index] ?? PORTAL_COLORS[0] ?? '#fff';
-    for (const point of [pair.a, pair.b]) {
-      const p = project(point.x, point.y);
-      ellipse(p.x, p.y, 13, 8, '#172238', color);
-      ellipse(p.x, p.y, 17 + 2 * Math.sin(time / 300 + index), 11, `${color}26`, `${color}99`);
-      text(String(index + 1), p.x, p.y, 13, color);
-    }
+  for (const [index, point] of board.portals.entries()) {
+    const p = project(point.x, point.y);
+    ellipse(p.x, p.y, 13, 8, '#172238', PORTAL_COLOR);
+    ellipse(p.x, p.y, 17 + 2 * Math.sin(time / 300 + index), 11, `${PORTAL_COLOR}26`, `${PORTAL_COLOR}99`);
+    text('↻', p.x, p.y, 13, PORTAL_COLOR);
   }
 
   for (const trap of scene.traps) {
@@ -177,7 +175,7 @@ function draw(
       ? { x: (target.x - player.x) * per, y: (target.y - player.y) * per } : { x: 0, y: 0 };
     actors.push({ depth: y, draw: () => {
       const p = project(x, y);
-      const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1);
+      const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1) * CHARACTER_SCALE;
       const team = COLORS[player.team];
       ellipse(p.x, p.y + 2, r * 1.26, r * 0.63, '#07171c8f',
         player.id === id ? '#fff' : team);

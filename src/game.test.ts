@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING } from './rules.ts';
 import type { Settings } from './rules.ts';
 
 function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10, y: 21, kind: 'wall' }])) {
-  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalPairs: 0, movement: 'classic', ...overrides }), undefined);
+  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalCount: 0, movement: 'classic', ...overrides }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
   game.state.terrain = [];
@@ -282,12 +282,13 @@ test('lobby validation rejects invalid pickup counts and movement modes', () => 
   assert.deepEqual(readSettings({ ...DEFAULT_SETTINGS, pickupCount: 0 }), { ...DEFAULT_SETTINGS, pickupCount: 0 });
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, pickupCount: 41 }), null);
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, movement: 'unknown' }), null);
-  assert.equal(readSettings({ ...DEFAULT_SETTINGS, portalPairs: 5 }), null);
+  assert.equal(readSettings({ ...DEFAULT_SETTINGS, portalCount: 9 }), null);
+  assert.equal(readSettings({ ...DEFAULT_SETTINGS, portalCount: 1 }), null);
 });
 
 test('portals work both ways without retriggering on arrival and do not land on another player', () => {
   const { game, red, blue } = setup();
-  game.state.portals = [{ a: { x: 10, y: 10 }, b: { x: 30, y: 10 } }];
+  game.state.portals = [{ x: 10, y: 10 }, { x: 30, y: 10 }];
   Object.assign(red, { x: 9, y: 10 });
   Object.assign(blue, { x: 30, y: 10 });
   game.input(red.id, 'right');
@@ -307,11 +308,11 @@ test('portals work both ways without retriggering on arrival and do not land on 
 });
 
 test('configured portals spawn on open ground, clear of pickups and starting players', () => {
-  const { game } = setup({ size: 32, portalPairs: 4, pickupCount: 40 }, new Game());
+  const { game } = setup({ size: 32, portalCount: 7, pickupCount: 40 }, new Game());
   const { portals, obstacles, pickups, players } = game.state;
-  assert.equal(portals.length, 4);
+  assert.equal(portals.length, 7);
   assert.equal(pickups.length, 40);
-  const endpoints = portals.flatMap(pair => [pair.a, pair.b]);
+  const endpoints = portals;
   for (const [index, endpoint] of endpoints.entries()) {
     assert.ok(!obstacles.some(tile => tile.x === endpoint.x && tile.y === endpoint.y));
     for (const other of [...endpoints.slice(index + 1), ...players, ...pickups]) {
@@ -323,7 +324,7 @@ test('configured portals spawn on open ground, clear of pickups and starting pla
 
 test('a smooth portal moves the player to the exact exit and uses up that movement tick', () => {
   const { game, redKing } = setup({ movement: 'smooth' });
-  game.state.portals = [{ a: { x: 10.1, y: 10 }, b: { x: 30.2, y: 10.3 } }];
+  game.state.portals = [{ x: 10.1, y: 10 }, { x: 30.2, y: 10.3 }];
   Object.assign(redKing, { x: 9.1, y: 10 });
   game.input(redKing.id, 'right');
   game.tick(1050);

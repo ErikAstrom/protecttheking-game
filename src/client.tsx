@@ -21,8 +21,9 @@ const watching = location.pathname === '/watch' || location.pathname === '/watch
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
   ['wins', 'Points to win'], ['size', 'Board side'], ['pickupCount', 'Pickups on board'],
-  ['portalPairs', 'Teleport pairs'],
 ] as const;
+const teleporterCounts = Array.from({ length: LIMITS.portalCount.max - LIMITS.portalCount.min + 1 },
+  (_, index) => LIMITS.portalCount.min + index).filter(count => count !== 1);
 
 function SettingsForm({ settings, send }: { settings: Settings; send: (command: Command) => void }) {
   const [draft, setDraft] = useState(settings);
@@ -37,6 +38,11 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
           value={Number.isNaN(draft[key]) ? '' : draft[key]}
           onChange={event => setDraft({ ...draft, [key]: event.currentTarget.valueAsNumber })} />
       </label>)}
+      <label>Teleporters
+        <select value={draft.portalCount} onChange={event => setDraft({ ...draft, portalCount: Number(event.currentTarget.value) })}>
+          {teleporterCounts.map(count => <option key={count} value={count}>{count === 0 ? 'Off' : count}</option>)}
+        </select>
+      </label>
       <label>Timeout rule
         <select value={draft.timeout} onChange={event => setDraft({
           ...draft, timeout: event.currentTarget.value === 'proximity' ? 'proximity' : 'draw',
@@ -337,7 +343,7 @@ function App() {
         </section>}
         <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
-          <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Matching numbers: linked portals</span>}
+          <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}

@@ -233,16 +233,19 @@ export class Game {
     state.pickups = [];
     state.traps = [];
     state.portals = [];
-    for (let index = 0; index < state.settings.portalPairs; index++) {
-      const a = this.findSpawn(point => {
-        const b = mirror(point, size);
-        return distance(point, b) >= size / 4 && this.spawnOpen(point) && this.spawnOpen(b);
+    while (state.portals.length < state.settings.portalCount) {
+      const mirrored = state.settings.portalCount - state.portals.length >= 2;
+      const portal = this.findSpawn(point => {
+        if (!this.spawnOpen(point)) return false;
+        const other = mirror(point, size);
+        return !mirrored || (distance(point, other) >= size / 4 && this.spawnOpen(other));
       });
-      if (!a) {
-        state.notice = 'Not all portal pairs could fit in this arena.';
+      if (!portal) {
+        state.notice = 'Not all teleporters could fit in this arena.';
         break;
       }
-      state.portals.push({ a, b: mirror(a, size) });
+      state.portals.push(portal);
+      if (mirrored) state.portals.push(mirror(portal, size));
     }
     const pairs = Math.floor(state.settings.pickupCount / 2);
     for (let index = 0; index < pairs; index++) {
@@ -275,7 +278,7 @@ export class Game {
   private spawnOpen(point: Point): boolean {
     const { settings, pickups, players, portals } = this.state;
     return !this.isBlocked(point, isFractional(settings.movement)) &&
-      [...pickups, ...players, ...portals.flatMap(({ a, b }) => [a, b])]
+      [...pickups, ...players, ...portals]
         .every(other => distance(other, point) >= TUNING.pickupSpacing);
   }
 
@@ -427,20 +430,17 @@ export class Game {
   }
 
   private stepTo(player: Player, target: Point, now: number, smooth: boolean): boolean {
-    let destination: Point | undefined;
-    for (const { a, b } of this.state.portals) {
-      if (this.touches(target, a) && !this.touches(player, a)) destination = b;
-      else if (this.touches(target, b) && !this.touches(player, b)) destination = a;
-      if (destination) break;
-    }
-    const teleported = !!destination && !this.occupants(destination, player, smooth).length;
-    Object.assign(player, teleported ? destination : target);
-    if (teleported) {
+    const entered = this.state.portals.find(portal => this.touches(target, portal) && !this.touches(player, portal));
+    const exits = entered ? this.state.portals.filter(portal =>
+      portal !== entered && !this.occupants(portal, player, smooth).length) : [];
+    const destination = exits.length ? exits[Math.floor(Math.random() * exits.length)] : undefined;
+    Object.assign(player, destination ?? target);
+    if (destination) {
       player.portalTrips++;
       this.velocities.delete(player.id);
     }
     this.enter(player, now);
-    return teleported;
+    return destination !== undefined;
   }
 
   private touches(a: Point, b: Point): boolean {

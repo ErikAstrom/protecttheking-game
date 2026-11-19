@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { Game } from './game.ts';
+import { DEFAULT_SETTINGS } from './rules.ts';
+
+test('followers reroll the exit and never land on an occupied teleporter', context => {
+  const game = new Game(() => []);
+  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, movement: 'classic', pickupCount: 0 }), undefined);
+  for (const id of ['redKing', 'blueKing', 'runner', 'follower']) assert.equal(game.join(id, id), undefined);
+  assert.equal(game.start(1000), undefined);
+  assert.equal(game.state.portals.length, 4);
+  game.state.terrain = [];
+  game.state.portals = [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 30, y: 10 }, { x: 40, y: 10 }];
+  const [redKing, , runner, follower] = game.state.players;
+  assert.ok(redKing && runner && follower);
+  Object.assign(redKing, { x: 40, y: 10 });
+  Object.assign(runner, { x: 9, y: 10 });
+  Object.assign(follower, { x: 10, y: 9 });
+  let draw = 0;
+  const random = context.mock.method(Math, 'random', () => draw);
+  game.input(runner.id, 'right');
+  game.tick(1100);
+  assert.deepEqual([runner.x, runner.portalTrips], [20, 1]);
+  game.tick(1200);
+  game.input(runner.id, null);
+  draw = 0.99;
+  game.input(follower.id, 'down');
+  game.tick(1300);
+  assert.deepEqual([follower.x, follower.y, follower.portalTrips], [30, 10, 1]);
+  assert.equal(random.mock.callCount(), 2);
+});

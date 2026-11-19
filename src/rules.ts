@@ -29,7 +29,6 @@ export const ITEM_KINDS = ['strength', 'speed', 'slow'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
 export type Trap = Point & { team: Team; expires: number };
-export type PortalPair = { a: Point; b: Point };
 export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
 export type Movement = (typeof MOVEMENTS)[number];
 export const WORLDS = ['penguin', 'arena'] as const;
@@ -38,7 +37,7 @@ export type World = (typeof WORLDS)[number];
 export const isFractional = (movement: Movement) => movement !== 'classic';
 export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
-  timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalPairs: number;
+  timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalCount: number;
   world: World;
 };
 export const LIMITS = {
@@ -47,12 +46,12 @@ export const LIMITS = {
   wins: { min: 1, max: 20, initial: 3 },
   size: { min: 32, max: 256, initial: 64 },
   pickupCount: { min: 0, max: 40, initial: 14 },
-  portalPairs: { min: 0, max: 4, initial: 1 },
+  portalCount: { min: 0, max: 8, initial: 4 },
 } as const;
 export const DEFAULT_SETTINGS: Settings = {
   teamSize: LIMITS.teamSize.initial, seconds: LIMITS.seconds.initial,
   wins: LIMITS.wins.initial, size: LIMITS.size.initial, timeout: 'draw',
-  movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalPairs: LIMITS.portalPairs.initial,
+  movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalCount: LIMITS.portalCount.initial,
   world: 'penguin',
 };
 export const TUNING = {
@@ -101,7 +100,7 @@ export type State = {
   host: string | null; phase: 'lobby' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
-  portals: PortalPair[]; terrain: TerrainPatch[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
+  portals: Point[]; terrain: TerrainPatch[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export type ServerMessage =
   | { type: 'hello'; id: string }
@@ -120,13 +119,14 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function readSettings(value: unknown): Settings | null {
   if (!isRecord(value) || (value.timeout !== 'draw' && value.timeout !== 'proximity')) return null;
-  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalPairs, world } = value;
+  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world } = value;
   function valid(key: keyof typeof LIMITS, n: unknown): n is number {
     const { min, max } = LIMITS[key];
     return typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
   }
   return valid('teamSize', teamSize) && valid('seconds', seconds) &&
-    valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) && valid('portalPairs', portalPairs) &&
+    valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) &&
+    valid('portalCount', portalCount) && portalCount !== 1 &&
     MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
-    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalPairs, world: world as World } : null;
+    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World } : null;
 }
