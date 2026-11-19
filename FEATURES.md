@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Three.js visual polish
-- **Status:** in progress — Copilot, 2026-11-19 14:28
-- **Requested by:** Playtest feedback
-- **Description:** Give the four 3D arenas distinct surfaces and improve depth and gameplay readability.
-- **Files:** `src/arena-three.ts`, Three.js art helpers, and renderer docs.
-
 ### Sword
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 15:40
 - **Requested by:** Erik
@@ -92,6 +86,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Three.js visual polish
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Give the four 3D arenas distinct surfaces and improve depth and gameplay readability.
+- **Notes:** Implemented in `Polish Three.js arena graphics` on `three-js`: procedural floors, shadows, wall and stair trim, clearer item markers, and animated black-hole debris.
 
 ### Three.js arena renderer
 - **Status:** done — 2026-11-19

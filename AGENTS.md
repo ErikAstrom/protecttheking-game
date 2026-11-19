@@ -95,6 +95,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
 - `src/arena.tsx` — shared live interpolation, replay timing, and Canvas fallback.
 - `src/arena-three.ts` — WebGL2 scene, orthographic camera, and models for the authoritative round state.
+- `src/arena-three-art.ts` — procedural floor textures for the four worlds; no downloaded art assets.
 - `src/audio.ts` — procedural music and sound effects.
 - Team colors and animal silhouettes identify players in live play, `/watch`, and replays; the white ring still identifies your own character.
 - `src/penguin.ts` — Penguin world drawing (ocean, ice floe, ice blocks, penguins), called from `arena.tsx`.
@@ -148,6 +149,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Give the 3D arenas distinct procedural surfaces, directional shadows, and clearer item markers so maps look different while gameplay cues remain readable.
 - 2026-11-19 — Render the arena in Three.js with a fixed orthographic camera so walls, stairs and characters have real depth without changing controls or tactics; retain Canvas for browsers without WebGL2.
 - 2026-11-19 — Default to one pickup per rostered player so small and large matches start with comparable item density per player.
 - 2026-11-19 — Offer random map rotation without back-to-back repeats and vary the orientation of whole Rooms formations so new rounds change chase routes, not just doorway positions.
