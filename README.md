@@ -25,6 +25,7 @@ The first player to join controls the lobby. Both teams must fill before startin
 - Kings can't collect pickups, but **Space** triggers a built-in four-second sprint. It starts ready each round and recharges ten seconds after the boost's scheduled end.
 - Set **Teleporters** to Off or 2–8 (four by default). Locations change each round. Each entry sends you to a randomly chosen unoccupied teleporter other than the one you entered. If all exits are occupied, you stay put. Step off and back on to roll again.
 - Pickups go into your unlimited queue. **Space** uses the oldest item first. Orange **Strength** lets a non-king push opponents for six seconds, up to two tiles or world units per push. Walls, edges, and other players stop the push. Green **Speed** speeds you up for four seconds. Purple **Slow trap** goes at your feet, slows the first enemy who touches it for three seconds, and expires after 20 seconds if unused. Teammates don't trigger it.
+- While Strength is active, your character looks 25% larger. Your collision size stays the same.
 - Collected pickups return after roughly 2.5–6.5 seconds at new random positions with randomly chosen types. The queue resets each round.
 - Select **Enable sound** for the procedural soundtrack and game cues; the browser needs that click to start audio.
 - When time expires, either nobody scores (**Draw**) or the team with more non-kings within five tiles of the opposing king earns a point (**Proximity**). Equal counts are a draw.

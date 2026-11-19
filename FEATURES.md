@@ -52,12 +52,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** new `src/bots.ts`, `src/bots.test.ts`; small hooks in `src/rules.ts`, `src/game.ts`, `src/client.tsx`; docs.
 - **Notes:** With balancing enabled, one human per team is enough to start. Keep AI in a separate module and reuse the existing movement and item methods without changing collision or pickup logic.
 
-### Visible size boost for Strength
-- **Status:** in progress — Copilot, 2026-11-19 13:15
-- **Requested by:** Playtest feedback
-- **Description:** Make players visibly larger while Strength is active without changing hitboxes.
-- **Files:** `src/arena.tsx`, `README.md`, `AGENTS.md`
-
 ### Single item slot and Vault pickup
 - **Status:** in progress — Copilot, 2026-11-19 13:16
 - **Requested by:** Playtest feedback
@@ -83,6 +77,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** new `src/holes.ts`, `src/holes.test.ts`; hooks in `src/game.ts`, `src/rules.ts`, `src/penguin.ts`/`src/arena.tsx` (drawing). Not `src/layout.ts` (that's "Open ice sheet layout").
 - **Notes:**
   - 2026-11-19 — Done in `Add water holes to the ice sheet`. Mirrored hole pairs (3 on the 48 board; fits 200/200 generated ice sheets at sizes 32/48/64), Penguin world only. Falling in reuses the golden gun's out-of-play + respawn (3 s, starting box); kings drown and respawn too, no points. 7 tests in `src/holes.test.ts` (placement, Ice slide-in, Classic step-in, forgiving rim, kings, strength push into water, no pickups in water, none in Castle arena). Browser-verified: slid into a hole, SPLASH!, HUD countdown, respawned in red box.
+
+### Visible size boost for Strength
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Make players visibly larger while Strength is active without changing hitboxes.
+- **Notes:** Completed in `Show larger characters during Strength`. Browser check verified a 25% increase while active and a return to normal size on expiry.
 
 ### Open ice sheet layout
 - **Status:** done — 2026-11-19

@@ -9,6 +9,7 @@ export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡',
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
 const PORTAL_COLOR = '#d4adff';
 const CHARACTER_SCALE = 1.25;
+const STRENGTH_SCALE = 1.25;
 const WIDTH = 1000;
 const HEIGHT = 620;
 
@@ -176,20 +177,21 @@ function draw(
     const per = replay ? TUNING.tickMs / REPLAY.sampleMs : -1;
     const motion = player.portalTrips === target.portalTrips
       ? { x: (target.x - player.x) * per, y: (target.y - player.y) * per } : { x: 0, y: 0 };
+    const strong = player.strengthUntil > scene.now;
+    const r = Math.min(16, Math.max(6, scale * 0.53)) * CHARACTER_SCALE *
+      (player.king ? 1.2 : 1) * (strong ? STRENGTH_SCALE : 1);
     const holder = board.players.find(candidate => candidate.id === player.id);
     if (!replay && holder && !holder.king && holder.inventory[0] === 'gun') {
-      const size = Math.min(16, Math.max(6, scale * 0.53)) * CHARACTER_SCALE;
-      actors.push({ depth: y + 0.001, draw: () => drawHeldGun(ctx, project, { x, y }, holder.facing, holder.id === id, size) });
+      actors.push({ depth: y + 0.001, draw: () => drawHeldGun(ctx, project, { x, y }, holder.facing, holder.id === id, r) });
     }
     actors.push({ depth: y, draw: () => {
       const p = project(x, y);
-      const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1) * CHARACTER_SCALE;
       const team = COLORS[player.team];
       ellipse(p.x, p.y + 2, r * 1.26, r * 0.63, '#07171c8f',
         player.id === id ? '#fff' : team);
       if (player.recoilUntil > scene.now) ellipse(p.x, p.y, r * 1.7, r * 0.88, '#ffffff20', '#ffffffaa');
-      if (player.strengthUntil > scene.now || player.paceUntil > scene.now) {
-        const color = player.strengthUntil > scene.now ? ITEMS.strength.color :
+      if (strong || player.paceUntil > scene.now) {
+        const color = strong ? ITEMS.strength.color :
           player.pace === 'speed' ? ITEMS.speed.color : ITEMS.slow.color;
         ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
       }
