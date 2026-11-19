@@ -3,7 +3,7 @@ import { boardOutline, onBoard } from './board-shape.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
@@ -119,6 +119,7 @@ export class Game {
   }
 
   reset(notice: string | null = null): void {
+    delete this.state.roundWorld;
     delete this.state.tilt;
     delete this.state.outline;
     delete this.state.walkway;
@@ -183,13 +184,14 @@ export class Game {
 
   tick(now: number): void {
     const { phase, deadline, players, settings } = this.state;
+    const world = this.state.roundWorld ?? settings.world;
     if (phase === 'countdown') {
       this.state.now = now;
       if (now >= roundStartsAt(this.state)) {
         this.state.phase = 'playing';
         this.state.deadline = now + settings.seconds * 1000;
-        if (settings.world === 'space') this.scheduleBlackHole(now);
-        this.scheduledTilt = scheduleTilt(settings, now);
+        if (world === 'space') this.scheduleBlackHole(now);
+        this.scheduledTilt = scheduleTilt(settings, now, Math.random, world);
         this.recordReplayFrame(now);
       }
       return;
@@ -240,7 +242,7 @@ export class Game {
       }
       if (this.state.phase !== 'playing') return;
     }
-    if (settings.world === 'space') {
+    if (world === 'space') {
       this.updateBlackHole(now);
       if (this.state.blackHole && elapsed > 0) {
         for (const player of ordered) {
@@ -336,7 +338,13 @@ export class Game {
 
   private startRound(now: number): void {
     const state = this.state;
-    const { size, seconds, world } = state.settings;
+    const { size, seconds, randomWorld } = state.settings;
+    let world = state.settings.world;
+    if (randomWorld) {
+      const candidates = WORLDS.filter(candidate => candidate !== state.roundWorld);
+      world = candidates[Math.floor(Math.random() * candidates.length)]!;
+    }
+    state.roundWorld = world;
     state.round++;
     state.phase = 'countdown';
     state.result = null;

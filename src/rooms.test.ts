@@ -60,43 +60,48 @@ for (const size of [32, 48, 63, 256]) {
   });
 }
 
-test('room partitions vary with the random draw', () => {
-  assert.notDeepEqual(generateRooms(48, () => 0.1), generateRooms(48, () => 0.9));
-});
-
-test('the default layout has eight distinct rooms with three-tile doors and corridors', () => {
+test('the default layout varies room formations while preserving eight two-exit rooms', () => {
   const size = DEFAULT_SETTINGS.size;
+  const formations = new Set<string>();
   for (const initialSeed of [1, 23, 48, 2026]) {
     let seed = initialSeed;
     const walls = generateRooms(size, () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32);
     const blocked = new Set(walls.map(({ x, y }) => `${x},${y}`));
-    const rooms: { left: number; right: number; top: number; bottom: number }[] = [];
+    const rooms: { left: number; right: number; top: number; bottom: number; turned: boolean }[] = [];
     const has = (x: number, y: number) => blocked.has(`${x},${y}`);
     for (const { x: left, y: top } of walls) {
       if (has(left - 1, top) || has(left, top - 1) || !has(left, top + 1) || !has(left + 1, top)) continue;
-      let bottom = top;
-      while (has(left, bottom + 1)) bottom++;
-      let door = left;
-      while (has(door, top)) door++;
-      let right = door + 2;
-      while (has(right + 1, top)) right++;
-      for (const y of [top, bottom]) {
-        const opening = Array.from({ length: right - left + 1 }, (_, x) => x + left)
-          .filter(x => !blocked.has(`${x},${y}`));
+      let endOfTop = left;
+      while (has(endOfTop + 1, top)) endOfTop++;
+      const turned = has(endOfTop, top + 1);
+      const at = (u: number, v: number) => turned ? has(left + v, top + u) : has(left + u, top + v);
+      let depth = 1;
+      while (at(0, depth)) depth++;
+      let door = 0;
+      while (at(door, 0)) door++;
+      let width = door + 3;
+      while (at(width, 0)) width++;
+      for (const edge of [0, depth - 1]) {
+        const opening = Array.from({ length: width }, (_, u) => u).filter(u => !at(u, edge));
         assert.equal(opening.length, 3);
         assert.equal(opening[2]! - opening[0]!, 2);
       }
-      for (let y = top + 1; y < bottom; y++) {
-        assert.ok(blocked.has(`${left},${y}`) && blocked.has(`${right},${y}`));
-        for (let x = left + 1; x < right; x++) assert.ok(!blocked.has(`${x},${y}`));
+      for (let v = 1; v < depth - 1; v++) {
+        assert.ok(at(0, v) && at(width - 1, v));
+        for (let u = 1; u < width - 1; u++) assert.ok(!at(u, v));
       }
+      const right = left + (turned ? depth : width) - 1;
+      const bottom = top + (turned ? width : depth) - 1;
       for (const other of rooms) {
         assert.ok(Math.max(other.left - right, left - other.right, other.top - bottom, top - other.bottom) >= 4);
       }
-      rooms.push({ left, right, top, bottom });
+      rooms.push({ left, right, top, bottom, turned });
     }
     assert.equal(rooms.length, 8);
+    assert.ok(rooms.some(room => room.turned) && rooms.some(room => !room.turned));
+    formations.add(rooms.map(({ left, right, top, bottom }) => `${left},${right},${top},${bottom}`).sort().join(';'));
   }
+  assert.ok(formations.size > 1, 'random draws change the room footprints, not just the doorways');
 });
 
 test('the lobby can select a round with Rooms & Corridors walls and no terrain patches', () => {

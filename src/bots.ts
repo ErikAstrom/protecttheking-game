@@ -13,7 +13,7 @@ type Plan = { at: number; route: Point[]; goal: Point | undefined; portalTrips: 
 
 function routeTo(state: State, bot: Player, goal: Point, quarry?: Player): Point[] {
   const { size } = state.settings;
-  const outline = state.outline ?? boardOutline(size, state.settings.world);
+  const outline = state.outline ?? boardOutline(size, state.roundWorld ?? state.settings.world);
   const clearance = isFractional(state.settings.movement) ? TUNING.smoothRadius : 0;
   const key = ({ x, y }: Point) => y * size + x;
   const start = key(tile(bot));
@@ -131,7 +131,8 @@ export class BotPilot {
       levelAt(state.walkway, player) === level),
       point => {
         const { x, y } = tile(point);
-        const { size, world } = state.settings;
+        const { size } = state.settings;
+        const world = state.roundWorld ?? state.settings.world;
         return levelAt(state.walkway, point) !== level ||
           !onBoard(state.outline ?? boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
       },

@@ -31,7 +31,7 @@ Agents are free — and expected — to edit this file as the project develops.
 ## 2. Game design
 
 ### Core loop
-Rooms & Corridors is a separate selectable map. The standard 48×48 board has eight walled rooms, each with two three-tile doorways opening onto corridors at least three tiles wide. Room count scales with board size, and room dimensions, positions, and doorways randomize where space allows. Wall segments are at least five tiles long; there are no scattered obstacles or terrain patches.
+Rooms & Corridors is a separate selectable map. The standard 48×48 board has eight walled rooms, each with two three-tile doorways opening onto corridors at least three tiles wide. Room count scales with board size, and room groups change orientation while dimensions, positions, and doorways vary where space allows. Wall segments are at least five tiles long; there are no scattered obstacles or terrain patches.
 Its raised walkway has stair entrances at both ends and safe drops off the sides. On boards at least 48 tiles across, a connected elevated branch runs down the central corridor to a third entrance near mid-map, with floor lanes on both sides. The deck is solid underneath; you cannot climb a ledge from the floor. Bots use the same height transitions. Pickups and teleporters spawn on the floor, and shots stay on the tier where they fire.
 
 Space arena is a starfield deck with three staggered bulkheads. During play a black hole spawns randomly in the central area after 2–4 seconds, lasts 6.5 seconds, then waits 2–4 seconds before spawning again. Its visible field pulls nearby players even while idle, but players can steer out and nobody is eliminated by the hole itself. Other maps do not get this hazard.
@@ -61,7 +61,7 @@ WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractio
 Every world randomizes the two corner cuts independently each round, keeping both starting boxes clear. The host publishes the shared outline for collision, spawning, bot navigation, and drawing. Mirrored terrain outlines are used for both rendering and gameplay. Tilt has a configurable base chance (default 50%) and duration (default 20 seconds). Space multiplies those odds by 1.6 (80% by default, capped at 100%) and increases the visual tilt and directional speed effect by 50%. The server skips tilt if it is disabled or the full event cannot fit. Both effects ease in and out together without adding idle drift. In Space, black-hole gravity works independently and can overlap with tilt.
 
 ### Progression & difficulty
-Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world (Penguin world or Castle arena), and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
+Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world, and on-board pickup count (0–40). With Random each round selected, the host chooses a world at round start, excluding the previous round's world, and publishes it as `roundWorld` for gameplay and rendering. A disconnect ends the current match and returns remaining players to the lobby.
 
 **Balance teams with bots** is off by default. When enabled, the host can start with one human per team; the configured team size is still the lobby cap. Bots fill only the smaller team, stay out of king rotation, and are removed on return to the lobby. They defend against nearby threats or hunt the opposing king using the same movement and item actions as humans.
 
@@ -144,6 +144,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Offer random map rotation without back-to-back repeats and vary the orientation of whole Rooms formations so new rounds change chase routes, not just doorway positions.
 - 2026-11-19 — Replace sparse Rooms partitions with two-exit rooms and dedicated corridors, and connect the raised walkway to a third staircase near mid-map so players can switch between upper and lower chase routes.
 - 2026-11-19 — Make Space hazards more frequent: multiply tilt odds by 1.6 (capped at 100%, still off at 0%), boost visual and movement tilt by 50%, and halve black-hole delays.
 - 2026-11-19 — Prototype elevation on Rooms & Corridors using a solid deck with stairs and walk-off drops, without adding a jump key or stacked floors.

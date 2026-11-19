@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Random map rotation and asymmetric Rooms layouts
-- **Status:** in progress — Copilot, 2026-11-19 14:14
-- **Requested by:** Playtest feedback
-- **Description:** Add a random map option with no back-to-back repeats, and vary the shape and placement of Rooms & Corridors formations.
-- **Files:** `src/rules.ts` (settings), `src/game.ts` (round selection), `src/client.tsx`, `src/rooms.ts`, and focused tests.
-
 ### Arena movement features
 - **Status:** in progress — Copilot, 2026-11-19 14:14
 - **Requested by:** Playtest feedback
@@ -98,6 +92,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Random map rotation and asymmetric Rooms layouts
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Add a random map option with no back-to-back repeats, and vary the shape and placement of Rooms & Corridors formations.
+- **Notes:** Implemented in `Add random map rotation and vary room formations`. The active world is chosen by the host; Rooms groups can run across or down the board.
 
 ### Denser Rooms & Corridors layouts
 - **Status:** done — 2026-11-19

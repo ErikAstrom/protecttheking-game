@@ -18,10 +18,11 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
-  const { size, movement, world } = board.settings;
+  const { size, movement } = board.settings;
+  const world = board.roundWorld ?? board.settings.world;
   const penguin = world === 'penguin';
   const space = world === 'space';
   const scale = 914 / size;

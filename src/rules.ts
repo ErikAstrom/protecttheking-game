@@ -38,11 +38,11 @@ export function surfaceAt(terrain: readonly TerrainPatch[], point: Point) {
 }
 export type Tilt = { downhill: Point; startedAt: number; endsAt: number; strength?: number };
 export const TILT = { rampMs: 1000, minimumLeadMs: 1000, firstFraction: 0.3, lastFraction: 0.5, speedGain: 0.32 } as const;
-export function scheduleTilt(settings: Settings, now: number, random = Math.random): Tilt | undefined {
+export function scheduleTilt(settings: Settings, now: number, random = Math.random, world = settings.world): Tilt | undefined {
   const roundMs = settings.seconds * 1000;
   const duration = settings.tiltSeconds * 1000;
   const latest = Math.min(roundMs * TILT.lastFraction, roundMs - duration);
-  const space = settings.world === 'space';
+  const space = world === 'space';
   const chance = space ? Math.min(100, settings.tiltChance * SPACE.tiltChanceMultiplier) : settings.tiltChance;
   if (latest < TILT.minimumLeadMs || random() * 100 >= chance) return undefined;
   const earliest = Math.min(latest, roundMs * TILT.firstFraction);
@@ -90,7 +90,7 @@ export const isFractional = (movement: Movement) => movement !== 'classic';
 export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
   timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalCount: number;
-  world: World; balanceBots: boolean; tiltChance: number; tiltSeconds: number;
+  world: World; randomWorld: boolean; balanceBots: boolean; tiltChance: number; tiltSeconds: number;
 };
 export const LIMITS = {
   teamSize: { min: 2, max: 8, initial: 4 },
@@ -106,7 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
   teamSize: LIMITS.teamSize.initial, seconds: LIMITS.seconds.initial,
   wins: LIMITS.wins.initial, size: LIMITS.size.initial, timeout: 'draw',
   movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalCount: LIMITS.portalCount.initial,
-  world: 'penguin', balanceBots: false,
+  world: 'penguin', randomWorld: false, balanceBots: false,
   tiltChance: LIMITS.tiltChance.initial, tiltSeconds: LIMITS.tiltSeconds.initial,
 };
 export function matchStartError(settings: Settings, players: readonly Player[]): string | undefined {
@@ -206,6 +206,7 @@ export type CaptureReplay = {
 };
 export type State = {
   blackHole: BlackHole | null;
+  roundWorld?: World;
   tilt?: Tilt;
   outline?: readonly Point[];
   walkway?: Walkway;
@@ -232,7 +233,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function readSettings(value: unknown): Settings | null {
   if (!isRecord(value) || (value.timeout !== 'draw' && value.timeout !== 'proximity')) return null;
-  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world, balanceBots = false,
+  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world, randomWorld = false, balanceBots = false,
     tiltChance = DEFAULT_SETTINGS.tiltChance, tiltSeconds = DEFAULT_SETTINGS.tiltSeconds } = value;
   function valid(key: keyof typeof LIMITS, n: unknown): n is number {
     const { min, max } = LIMITS[key];
@@ -242,7 +243,8 @@ export function readSettings(value: unknown): Settings | null {
     valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) &&
     valid('portalCount', portalCount) && portalCount !== 1 &&
     valid('tiltChance', tiltChance) && valid('tiltSeconds', tiltSeconds) &&
-    typeof balanceBots === 'boolean' && MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
+    typeof randomWorld === 'boolean' && typeof balanceBots === 'boolean' &&
+    MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
     ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World,
-      balanceBots, tiltChance, tiltSeconds } : null;
+      randomWorld, balanceBots, tiltChance, tiltSeconds } : null;
 }

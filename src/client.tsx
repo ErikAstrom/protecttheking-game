@@ -70,10 +70,16 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
         </select>
       </label>
       <label>World
-        <select value={draft.world} onChange={event => setDraft({
-          ...draft, world: WORLDS.find(option => option === event.currentTarget.value) ?? 'penguin',
-        })}>
+        <select value={draft.randomWorld ? 'random' : draft.world} onChange={event => {
+          const value = event.currentTarget.value;
+          if (value === 'random') setDraft({ ...draft, randomWorld: true });
+          else {
+            const world = WORLDS.find(option => option === value);
+            if (world) setDraft({ ...draft, world, randomWorld: false });
+          }
+        }}>
           {WORLDS.map(option => <option key={option} value={option}>{WORLD_LABELS[option]}</option>)}
+          <option value="random">Random each round</option>
         </select>
       </label>
       <label>Balance teams with bots
@@ -148,6 +154,7 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
         </div>
         <div className="viewer-clock">
           <strong>{inLobby ? 'Lobby' : `Round ${state.round}`}</strong>
+          {!inLobby && <small>{WORLD_LABELS[state.roundWorld ?? state.settings.world]}</small>}
           {state.phase === 'playing' && <span className={seconds <= 10 ? 'urgent' : ''}>{seconds}s</span>}
           <small>First to {state.settings.wins}</small>
         </div>
@@ -201,7 +208,8 @@ function App() {
   const heldItem = player?.inventory[0];
   const canMove = !!player && state?.phase === 'playing' && connected;
   const smooth = !!state && isFractional(state.settings.movement);
-  const penguin = state?.settings.world === 'penguin';
+  const world = state?.roundWorld ?? state?.settings.world;
+  const penguin = world === 'penguin';
   useEffect(() => {
     if (!canMove) return;
     const held = new Map<string, Direction>();
@@ -372,6 +380,7 @@ function App() {
       {!lobby && <>
         <section className={`round${seconds <= 10 && state.phase === 'playing' ? ' urgent' : ''}`} aria-label="Round status">
           <strong>Round {state.round} · {state.phase === 'countdown' ? state.settings.seconds : seconds}s · First to {state.settings.wins} · {state.settings.movement === 'ice' ? 'Ice' : smooth ? 'Smooth' : 'Classic'}</strong>
+          <span>{WORLD_LABELS[state.roundWorld ?? state.settings.world]}</span>
           {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
             {player.strengthUntil > state.now ? ' · Strength active' : ''}
             {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
@@ -413,7 +422,7 @@ function App() {
           <span>{TEAM_NAMES.red}</span><span>{TEAM_NAMES.blue}</span>
           {state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
-          {state.settings.world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}
+          {world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}
           {state.walkway && <span>Raised routes: climb the gold stairs or drop off the sides</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
