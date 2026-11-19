@@ -53,6 +53,20 @@ test('a player can steer against the pull and leave the field', () => {
   assert.ok(king.x < hole.x - SPACE.radius);
 });
 
+test('Space black holes appear within four seconds of round start and again within four seconds of expiry', t => {
+  t.mock.method(Math, 'random', () => 0.999);
+  const game = setup('smooth');
+  game.tick(5000);
+  const first = game.state.blackHole;
+  assert.ok(first);
+  game.tick(first.expires);
+  game.tick(first.expires + 1999);
+  assert.equal(Boolean(game.state.blackHole), false);
+  game.tick(first.expires + 4000);
+  assert.ok(game.state.blackHole);
+  assert.notEqual(game.state.blackHole, first);
+});
+
 test('Space adds solid bulkheads and gravity moves a nearby idle player more than three tiles per second', () => {
   const game = new Game();
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, world: 'space', movement: 'classic', teamSize: 2, portalCount: 0 }), undefined);

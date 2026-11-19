@@ -36,23 +36,25 @@ export function surfaceAt(terrain: readonly TerrainPatch[], point: Point) {
     point.x >= x - 0.5 && point.x < x + width - 0.5 &&
     point.y >= y - 0.5 && point.y < y + height - 0.5 && (!outline || insideTerrain(outline, point)))?.kind;
 }
-export type Tilt = { downhill: Point; startedAt: number; endsAt: number };
+export type Tilt = { downhill: Point; startedAt: number; endsAt: number; strength?: number };
 export const TILT = { rampMs: 1000, minimumLeadMs: 1000, firstFraction: 0.3, lastFraction: 0.5, speedGain: 0.32 } as const;
 export function scheduleTilt(settings: Settings, now: number, random = Math.random): Tilt | undefined {
   const roundMs = settings.seconds * 1000;
   const duration = settings.tiltSeconds * 1000;
   const latest = Math.min(roundMs * TILT.lastFraction, roundMs - duration);
-  if (latest < TILT.minimumLeadMs || random() * 100 >= settings.tiltChance) return undefined;
+  const space = settings.world === 'space';
+  const chance = space ? Math.min(100, settings.tiltChance * SPACE.tiltChanceMultiplier) : settings.tiltChance;
+  if (latest < TILT.minimumLeadMs || random() * 100 >= chance) return undefined;
   const earliest = Math.min(latest, roundMs * TILT.firstFraction);
   const startedAt = now + Math.round(earliest + random() * (latest - earliest));
   const downhill = [DIRECTIONS.up, DIRECTIONS.down, DIRECTIONS.left, DIRECTIONS.right][Math.floor(random() * 4)]!;
-  return { downhill, startedAt, endsAt: startedAt + duration };
+  return { downhill, startedAt, endsAt: startedAt + duration, ...(space ? { strength: SPACE.tiltStrength } : {}) };
 }
 export function tiltAmount(tilt: Tilt | undefined, now: number): number {
   if (!tilt) return 0;
   const ramp = Math.min(TILT.rampMs, (tilt.endsAt - tilt.startedAt) / 2);
   const fraction = Math.max(0, Math.min(1, (now - tilt.startedAt) / ramp, (tilt.endsAt - now) / ramp));
-  return fraction * fraction * (3 - 2 * fraction);
+  return fraction * fraction * (3 - 2 * fraction) * (tilt.strength ?? 1);
 }
 export function tiltSpeed(tilt: Tilt | undefined, direction: Point | null, now: number): number {
   if (!tilt || !direction) return 1;
@@ -169,7 +171,8 @@ export const HOLES = {
   respawnMs: 3000, splashMs: 700,
 } as const;
 export const SPACE = {
-  minDelayMs: 4000, maxDelayMs: 8000, durationMs: 6500,
+  minDelayMs: 2000, maxDelayMs: 4000, durationMs: 6500,
+  tiltChanceMultiplier: 1.6, tiltStrength: 1.5,
   radius: 9, coreRadius: 1, maxPullPerMs: 0.006,
   spawnInset: 0.25, spawnAttempts: 16,
 } as const;

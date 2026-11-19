@@ -3,7 +3,7 @@ import test from 'node:test';
 import { boardOutline, onBoard } from './board-shape.ts';
 import { Game } from './game.ts';
 import { generateTerrain, mirror } from './layout.ts';
-import { DEFAULT_SETTINGS, DIRECTIONS, TUNING, WORLDS, readSettings, scheduleTilt, surfaceAt, tiltAmount } from './rules.ts';
+import { DEFAULT_SETTINGS, DIRECTIONS, TUNING, WORLDS, readSettings, scheduleTilt, surfaceAt, tiltAmount, tiltSpeed } from './rules.ts';
 import { startActiveRound } from './test-round.ts';
 import type { Direction, Movement, Point, World } from './rules.ts';
 
@@ -67,6 +67,20 @@ test('tilt honors the configured odds and duration, and skips rounds that are to
   assert.equal(scheduleTilt({ ...DEFAULT_SETTINGS, tiltChance: 0 }, 1000, () => 0), undefined);
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, tiltChance: 101 }), null);
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, tiltSeconds: 0 }), null);
+});
+
+test('Space tilts more often and more strongly, but still honors disabled tilt and the round duration', () => {
+  const settings = { ...DEFAULT_SETTINGS, world: 'space' } as const;
+  assert.equal(scheduleTilt(DEFAULT_SETTINGS, 1000, () => 0.79), undefined);
+  const tilt = scheduleTilt(settings, 1000, () => 0.79);
+  assert.ok(tilt);
+  assert.equal(scheduleTilt(settings, 1000, () => 0.8), undefined);
+  assert.equal(scheduleTilt({ ...settings, tiltChance: 0 }, 1000, () => 0), undefined);
+  assert.equal(scheduleTilt({ ...settings, seconds: 20 }, 1000, () => 0), undefined);
+  const peak = (tilt.startedAt + tilt.endsAt) / 2;
+  assert.equal(tiltAmount(tilt, peak), 1.5);
+  assert.equal(tiltSpeed(tilt, tilt.downhill, peak), 1.48);
+  assert.equal(tiltSpeed(tilt, null, peak), 1);
 });
 
 test('tilt eases to full strength, holds, and eases back to level', () => {
