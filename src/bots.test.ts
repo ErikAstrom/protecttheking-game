@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Game } from './game.ts';
+import { startActiveRound } from './test-round.ts';
 import { DEFAULT_SETTINGS, readSettings, TUNING } from './rules.ts';
 import type { Movement, State, Settings } from './rules.ts';
 
@@ -25,7 +26,7 @@ function player(game: Game, id: string) {
 test('bot balancing fills only the smaller team, rotates human kings, and cleans up on disconnect', () => {
   const game = lobby({ balanceBots: true });
   uneven(game);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   const bot = game.state.players.find(candidate => candidate.bot);
   assert.ok(bot);
   assert.equal(bot.team, 'blue');
@@ -35,7 +36,7 @@ test('bot balancing fills only the smaller team, rotates human kings, and cleans
     assert.equal(player(game, blueKing).king, true);
     assert.equal(bot.king, false);
     game.tick(game.state.deadline);
-    if (round < 2) assert.equal(game.next(game.state.now + 1), undefined);
+    if (round < 2) startActiveRound(game, game.state.now + TUNING.roundCountdownMs + 1, 'next');
   }
   game.leave('r1');
   assert.equal(game.state.phase, 'lobby');
@@ -61,7 +62,7 @@ test('bot balancing is opt-in and still needs a human king on each team', () => 
 function setupBot(movement: Movement) {
   const game = lobby({ balanceBots: true, movement });
   for (const id of ['r1', 'b1', 'r2']) game.join(id, id);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   const bot = game.state.players.find(candidate => candidate.bot);
   assert.ok(bot);
   game.state.terrain = [];
@@ -103,7 +104,7 @@ test('a bot navigates around a wall rather than walking into it', () => {
   const game = new Game(() => wall, () => []);
   game.configure({ ...DEFAULT_SETTINGS, balanceBots: true, movement: 'smooth', pickupCount: 0, portalCount: 0 });
   for (const id of ['r1', 'b1', 'r2']) game.join(id, id);
-  game.start(1000);
+  startActiveRound(game, 1000);
   const bot = game.state.players.find(candidate => candidate.bot);
   assert.ok(bot);
   Object.assign(bot, { x: 8, y: 9 });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
+import { startActiveRound } from './test-round.ts';
 import { castShot } from './gun.ts';
 import type { ShotTarget } from './gun.ts';
 import { DEFAULT_SETTINGS, GUN, TUNING } from './rules.ts';
@@ -41,7 +42,7 @@ function match(movement: Movement = 'classic') {
   const game = new Game(() => []);
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 60, pickupCount: 0, portalCount: 0, movement }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   game.state.terrain = [];
   game.state.holes = [];
   const [redKing, blueKing, red, blue] = game.state.players;
@@ -123,7 +124,7 @@ test('the golden gun is rare: never an opening pickup, and at most one on the bo
   const game = new Game(() => []);
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, pickupCount: 40, portalCount: 0 }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) game.join(id, id);
-  game.start(1000);
+  startActiveRound(game, 1000);
   assert.ok(game.state.pickups.length > 0);
   assert.ok(game.state.pickups.every(pickup => pickup.kind !== 'gun'), 'opening pickups never include the gun');
   const random = Math.random;

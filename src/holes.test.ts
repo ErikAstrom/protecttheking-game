@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
+import { startActiveRound } from './test-round.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { mirror } from './layout.ts';
 import { DEFAULT_SETTINGS, HOLES, TUNING } from './rules.ts';
@@ -42,7 +43,7 @@ function match(options: { movement?: Movement; world?: World; holes?: Hole[] } =
     movement: options.movement ?? 'ice', world: options.world ?? 'penguin',
   }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   game.state.terrain = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);

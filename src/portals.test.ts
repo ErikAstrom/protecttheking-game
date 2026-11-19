@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
+import { startActiveRound } from './test-round.ts';
 import { DEFAULT_SETTINGS } from './rules.ts';
 
 test('followers reroll the exit and never land on an occupied teleporter', context => {
   const game = new Game(() => []);
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, movement: 'classic', pickupCount: 0 }), undefined);
   for (const id of ['redKing', 'blueKing', 'runner', 'follower']) assert.equal(game.join(id, id), undefined);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   assert.equal(game.state.portals.length, 4);
   game.state.terrain = [];
   game.state.holes = [];

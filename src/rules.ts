@@ -70,6 +70,7 @@ export function matchStartError(settings: Settings, players: readonly Player[]):
   }
 }
 export const TUNING = {
+  roundCountdownMs: 3000, roundGoMs: 700,
   pushTiles: 2, strengthMs: 6000, speedMs: 4000, slowMs: 3000,
   moveMs: 100, fastMoveMs: 65, slowMoveMs: 200, proximityTiles: 5, tickMs: 25,
   smoothRadius: 0.44, smoothStep: 0.2, smoothPushCooldownMs: 400,
@@ -148,11 +149,12 @@ export type CaptureReplay = {
   hunterId: string; kingId: string; contact: Point; frames: ReplayFrame[];
 };
 export type State = {
-  host: string | null; phase: 'lobby' | 'playing' | 'between' | 'finished';
+  host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
   portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; holes: Hole[]; splashes: Splash[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
+export const roundStartsAt = (state: State) => state.deadline - state.settings.seconds * 1000;
 export type ServerMessage =
   | { type: 'hello'; id: string }
   | { type: 'state'; state: State }

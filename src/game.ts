@@ -2,7 +2,7 @@ import { BotPilot } from './bots.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, matchStartError, surfaceAt } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
@@ -167,6 +167,15 @@ export class Game {
 
   tick(now: number): void {
     const { phase, deadline, players, settings } = this.state;
+    if (phase === 'countdown') {
+      this.state.now = now;
+      if (now >= roundStartsAt(this.state)) {
+        this.state.phase = 'playing';
+        this.state.deadline = now + settings.seconds * 1000;
+        this.recordReplayFrame(now);
+      }
+      return;
+    }
     if (phase !== 'playing') return;
     const elapsed = Math.min(now - this.state.now, TUNING.tickMs * 2);
     this.state.now = now;
@@ -246,14 +255,14 @@ export class Game {
     const state = this.state;
     const { size, seconds } = state.settings;
     state.round++;
-    state.phase = 'playing';
+    state.phase = 'countdown';
     state.result = null;
     state.shots = [];
     state.splashes = [];
     state.replay = null;
     state.notice = null;
     state.now = now;
-    state.deadline = now + seconds * 1000;
+    state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
     state.obstacles = (this.layout ?? (state.settings.world === 'penguin' ? generateIceSheet : generateArena))(size);
     state.terrain = generateTerrain(size);
     state.holes = state.settings.world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
@@ -298,14 +307,13 @@ export class Game {
     const pairs = Math.floor(state.settings.pickupCount / 2);
     for (let index = 0; index < pairs; index++) {
       if (!this.spawnPickup(COMMON_ITEMS[index % COMMON_ITEMS.length], true)) {
-        this.scheduleRespawn(now);
-        this.scheduleRespawn(now);
+        this.scheduleRespawn(roundStartsAt(state));
+        this.scheduleRespawn(roundStartsAt(state));
       }
     }
     if (state.settings.pickupCount % 2 && !this.spawnPickup(COMMON_ITEMS[pairs % COMMON_ITEMS.length])) {
-      this.scheduleRespawn(now);
+      this.scheduleRespawn(roundStartsAt(state));
     }
-    this.recordReplayFrame(now);
   }
 
   private spawnPickup(kind?: ItemKind, paired = false): boolean {

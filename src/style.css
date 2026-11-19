@@ -26,6 +26,14 @@ a { color: #a4efff; }
 .viewer-clock .urgent { color: #ffc46e; }
 .viewer-wait { text-align: center; margin-top: 2rem; }
 .viewer-board canvas { width: min(100%, max(280px, calc((100dvh - 13rem) * 1.6))); }
+.round-board { position: relative; }
+.round-countdown {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
+  pointer-events: none; text-align: center; color: #fff5d5;
+}
+.round-countdown small, .round-countdown strong { background: #0b1321; padding-inline: 0.6em; }
+.round-countdown small { font-size: clamp(0.9rem, 3vw, 1.5rem); border-radius: 0.4em 0.4em 0 0; }
+.round-countdown strong { font-size: clamp(2.5rem, 9vw, 6rem); line-height: 1.25; border-radius: 0.2em; }
 .audio-toggle { float: right; background: #183541; border-color: #52717c; color: #eef4ff; margin: 0 0 0.35rem 0.6rem; }
 .eyebrow { color: #ffe18a; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
 .teams, .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }

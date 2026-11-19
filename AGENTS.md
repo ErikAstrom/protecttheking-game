@@ -36,7 +36,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 ### Win / lose conditions
 - Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
 - A capture gives the winner one point. On timeout, the host can choose a draw or compare the number of opposing non-kings within five tiles of each king; equal counts draw.
-- First team to the configured point target wins. The lobby host starts rounds.
+- First team to the configured point target wins. The lobby host starts each round. The server counts down three seconds with players and bots frozen, then enables movement and items and starts the full round timer. Player screens and `/watch` show the same countdown.
 - After a capture, players get an instant replay of up to three seconds of server-recorded action at 75% speed, with start and impact cues when sound is enabled. Playback is local and skippable and doesn't hold up the next round. Timeouts don't generate replays.
 
 ### Entities
@@ -133,6 +133,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Count down before every round on the host so all players can see the new arena and start on equal footing.
 - 2026-11-19 — Add opt-in bots to the smaller team at match start, keeping kings human, so uneven groups can play without moving anyone.
 - 2026-11-19 — A king who falls into a water hole respawns in their box and nobody scores — Erik asked that falling in means dying and respawning; change `takeOut` callers if drowning a king should give the other team a point.
 - 2026-11-19 — Give Penguin world its own open ice-sheet layout (few chunky icebergs) and default to a 48 board; Castle keeps the dense walls — the owner wants open ice to slide on with bigger walls and units, and the dense layout stays useful for comparison. This relaxes "worlds are visual only" to cover layouts.

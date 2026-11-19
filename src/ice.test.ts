@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
+import { startActiveRound } from './test-round.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
 import { DEFAULT_SETTINGS, ICE, TUNING, readSettings } from './rules.ts';
 import type { Direction, Point } from './rules.ts';
@@ -20,7 +21,7 @@ function iceGame() {
   const game = new Game(() => []);
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 30, pickupCount: 0, portalCount: 0 }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   game.state.terrain = [];
   game.state.holes = [];
   const red = game.state.players[2];

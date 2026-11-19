@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
+import { startActiveRound } from './test-round.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING } from './rules.ts';
 import type { Settings } from './rules.ts';
@@ -8,7 +9,7 @@ import type { Settings } from './rules.ts';
 function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10, y: 21, kind: 'wall' }])) {
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalCount: 0, movement: 'classic', ...overrides }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
-  assert.equal(game.start(1000), undefined);
+  startActiveRound(game, 1000);
   game.state.terrain = [];
   game.state.holes = [];
   const [redKing, blueKing, red, blue] = game.state.players;
@@ -365,7 +366,7 @@ test('king contact scores before pushback and the next round rotates the kings',
   assert.equal(blueKing.x, 11);
   assert.deepEqual(game.state.result, { winner: 'red', reason: 'capture' });
   assert.deepEqual(game.state.score, { red: 1, blue: 0 });
-  assert.equal(game.next(1200), undefined);
+  startActiveRound(game, 1200, 'next');
   assert.equal(game.state.round, 2);
   assert.equal(game.state.replay, null);
   assert.deepEqual([redKing.king, blueKing.king, red.king, blue.king], [false, false, true, true]);

@@ -22,6 +22,7 @@ For uneven teams, set **Balance teams with bots** to **On** and choose **Apply s
 
 ## Play
 
+- Each round starts with **3, 2, 1, GO!** on player screens and the live viewer. Movement and items unlock at **GO!**, when the full round timer starts.
 - Move with **WASD** or the arrow keys. On **Ice**, you build up speed as you run, drift when you turn, skid when you reverse, and keep gliding after you let go, so plan your stops. In Smooth and Ice, hold two directions to move diagonally. Turns carry momentum, so speed boosts make you slide farther; release the keys to hold your position. Look for gold crowns and armored hunters with team-colored shields. Your own piece has a white ring.
 - Players wear **R** or **B** for their team. Bumping another player makes the mover recoil up to one tile or world unit while the blocker holds their ground. Successful strength pushes still shove the blocker instead. Contact between a king and an opposing non-king captures the king immediately.
 - Kings can't collect pickups, but **Space** triggers a built-in four-second sprint. It starts ready each round and recharges ten seconds after the boost's scheduled end.

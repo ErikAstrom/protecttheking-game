@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio, newShotCount } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
-import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, matchStartError, surfaceAt } from './rules.ts';
+import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
 import type { Command, Direction, Movement, ServerMessage, Settings, State, World } from './rules.ts';
 
 const MOVEMENT_LABELS: Record<Movement, string> = {
@@ -75,6 +75,16 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
   </form>;
 }
 
+function RoundCountdown({ state }: { state: State }) {
+  const untilStart = roundStartsAt(state) - state.now;
+  const counting = state.phase === 'countdown';
+  if (!counting && (state.phase !== 'playing' || -untilStart >= TUNING.roundGoMs)) return null;
+  return <div className="round-countdown" role="status" aria-atomic="true">
+    {counting && <small>Round starts in</small>}
+    <strong>{counting ? Math.max(1, Math.ceil(untilStart / 1000)) : 'GO!'}</strong>
+  </div>;
+}
+
 function Viewer({ state, connected, error, soundControl, onReplayCue }: {
   state: State | null; connected: boolean; error: string;
   soundControl: React.ReactNode; onReplayCue: (cue: ReplayCue) => void;
@@ -125,8 +135,9 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
       </section>
       {inLobby ? <p className="viewer-wait" role="status">{state.notice ?? 'Waiting for the lobby host to start the match.'}</p> : <>
         {status && <p className="status" role="status">{status} — {result?.reason === 'capture' ? 'king captured' : 'time expired'}.</p>}
-        <div className="viewer-board">
+        <div className="viewer-board round-board">
           <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id="" onReplayCue={onReplayCue} />
+          <RoundCountdown state={state} />
         </div>
       </>}
     </>}
@@ -290,7 +301,7 @@ function App() {
   }
   if (watching) return <Viewer state={state} connected={connected} error={error} soundControl={soundControl}
     onReplayCue={onReplayCue} />;
-  return <main className={state?.phase === 'playing' ? 'in-match' : ''}>
+  return <main className={state?.phase === 'playing' || state?.phase === 'countdown' ? 'in-match' : ''}>
     <header>
       {soundControl}
       <p className="eyebrow">LAN party game</p>
@@ -333,7 +344,7 @@ function App() {
       </>}
       {!lobby && <>
         <section className={`round${seconds <= 10 && state.phase === 'playing' ? ' urgent' : ''}`} aria-label="Round status">
-          <strong>Round {state.round} · {seconds}s · First to {state.settings.wins} · {state.settings.movement === 'ice' ? 'Ice' : smooth ? 'Smooth' : 'Classic'}</strong>
+          <strong>Round {state.round} · {state.phase === 'countdown' ? state.settings.seconds : seconds}s · First to {state.settings.wins} · {state.settings.movement === 'ice' ? 'Ice' : smooth ? 'Smooth' : 'Classic'}</strong>
           {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
             {player.strengthUntil > state.now ? ' · Strength active' : ''}
             {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
@@ -365,7 +376,10 @@ function App() {
             </li>)}
           </ol> : <span className="empty-queue">No items yet — move over a pickup.</span>}
         </section>}
-        <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
+        <div className="round-board">
+          <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
+          <RoundCountdown state={state} />
+        </div>
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: fall in and you're out for 3s</span>}

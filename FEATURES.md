@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Round start countdown
-- **Status:** in progress — Copilot, 2026-11-19 13:26
-- **Requested by:** Playtest feedback
-- **Description:** Show a synchronized three-second countdown before every round on player screens and `/watch`. Freeze play until GO, then start the full round timer.
-- **Files:** `src/game.ts`, `src/rules.ts`, `src/server.ts`, `src/client.tsx`, `src/style.css`, focused countdown tests and existing game test setup.
-- **Notes:** Reuse the round-start sound cue on GO; leave movement, collisions, and items unchanged during play.
-
 ### Single item slot and Vault pickup
 - **Status:** in progress — Copilot, 2026-11-19 13:16
 - **Requested by:** Playtest feedback
@@ -93,6 +86,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Round start countdown
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Show a synchronized three-second countdown before every round on player screens and `/watch`. Freeze play until GO, then start the full round timer.
+- **Notes:** Completed in `Count down before every round`. Verified the overlay and full clock in both browser views, plus first and subsequent rounds, blocked actions, and disconnect cleanup in game tests.
 
 ### Smart bots for uneven teams
 - **Status:** done — 2026-11-19

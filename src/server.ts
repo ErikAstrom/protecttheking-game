@@ -135,7 +135,7 @@ function isDirection(value: unknown): value is Direction {
 }
 
 setInterval(() => {
-  if (game.state.phase !== 'playing') return;
+  if (game.state.phase !== 'playing' && game.state.phase !== 'countdown') return;
   game.tick(Date.now());
   broadcast();
 }, TUNING.tickMs).unref();
