@@ -29,30 +29,31 @@ Agents are free — and expected — to edit this file as the project develops.
 ## 2. Game design
 
 ### Core loop
-Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Solid units and walls create chokepoints. The prototype has a fixed, symmetric wall layout and randomized paired pickups. Procedural walls are a follow-up.
+Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Solid units and walls create chokepoints. The fixed, symmetric wall layout starts with randomized mirrored pickup pairs (and a single extra if the configured count is odd). Collected pickups return independently as randomly chosen items in random open positions after 2.5–6.5 seconds. Procedural walls are a follow-up.
 
 ### Win / lose conditions
 - Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
 - A capture gives the winner one point. On timeout, the host can choose a draw or compare the number of opposing non-kings within five tiles of each king; equal counts draw.
 - First team to the configured point target wins. The lobby host starts rounds.
+- After a capture, players get an instant replay of up to three seconds of server-recorded action at 75% speed. Playback is local and skippable, and it doesn't hold up the next round. Timeouts don't generate replays.
 
 ### Entities
 | Entity | Role | Notes |
 |---|---|---|
 | King | Evade opponents | Moves with the same controls; cannot push or capture. |
 | Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
-| Pickups | Modify movement or collision | Strength lasts six seconds and refreshes without stacking; speed boost and slow trap change movement pace temporarily. |
+| Pickups | Modify movement or collision | Collect into an unlimited per-round FIFO queue. Strength lasts six seconds and refreshes without stacking. Speed lasts four seconds. A deployed slow trap expires after 20 seconds or on first enemy contact, slowing them for three seconds. |
 
 ### Controls
-WASD or arrows. Movement is cardinal, one tile at a time.
+WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractional world coordinates, normalized diagonals, and circular unit collisions with no chain pushes. Space activates the oldest held item.
 
 ### Progression & difficulty
-Default match: 4v4, first to 3. Lobby settings control team size, timer, arena dimensions, points to win, and timeout rule. A disconnect ends the current match and returns remaining players to the lobby.
+Default match: Classic 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode, and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
 
 ## 3. Tech stack
 
 - Language: TypeScript.
-- Engine / framework: React lobby and scoreboard, Canvas 2D board.
+- Engine / framework: React lobby and scoreboard, tilted Canvas 2D board, opt-in Web Audio music and cues.
 - Build tooling: TypeScript type-checking and Vite browser build.
 - Hosting: Node.js serves the build and owns match state; `ws` handles same-origin WebSockets. In-memory, single lobby, trusted LAN only.
 
@@ -63,7 +64,8 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
 - `src/server.ts` — HTTP host and WebSocket command handling.
-- `src/client.tsx`, `src/style.css` — lobby, input, rendering, and scoreboard.
+- `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
+- `src/arena.tsx`, `src/audio.ts` — tilted board and procedural music and sound effects.
 
 ## 5. Coding conventions
 
@@ -97,5 +99,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Record capture replays on the host so all players can see the same lead-up without affecting scoring or round transitions.
+- 2026-11-19 — Keep Classic alongside Smooth for playtest comparison; use an unlimited FIFO queue and placed traps so pickups reward timing as well as movement.
 - 2026-11-19 — Start with a fixed wall layout and host-authoritative LAN play to tune the capture and push loop before adding procedural walls.
 - 2026-11-19 — This spec is a living document that agents may edit — so work isn't blocked on undecided `TBD`s.

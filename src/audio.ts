@@ -1,0 +1,79 @@
+type Cue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent';
+const CUES: Record<Cue, number[]> = {
+  pickup: [72, 79, 84], use: [60, 67, 76], trap: [56, 49, 44],
+  round: [55, 60, 67, 72], capture: [60, 64, 67, 76], timeout: [62, 57, 55], urgent: [72, 72],
+};
+const TUNE = [60, 67, 69, 67, 64, 67, 62, 67, 60, 64, 67, 72, 69, 64, 62, 67,
+  57, 64, 67, 64, 60, 64, 62, 64, 55, 62, 65, 67, 65, 62, 59, 62];
+const BASS = [48, 48, 45, 43];
+
+export class GameAudio {
+  private readonly context = new AudioContext();
+  private readonly music = this.context.createGain();
+  private timer: number | undefined;
+
+  constructor() {
+    this.music.gain.value = 0.42;
+    this.music.connect(this.context.destination);
+  }
+
+  async enable() {
+    await this.context.resume();
+  }
+
+  async mute() {
+    this.stopMusic();
+    await this.context.suspend();
+  }
+
+  close() {
+    this.stopMusic();
+    void this.context.close().catch(error => console.error('Could not close game audio:', error));
+  }
+
+  setMusic(playing: boolean) {
+    if (!playing) { this.stopMusic(); return; }
+    if (this.timer !== undefined || this.context.state !== 'running') return;
+    let index = 0;
+    const beat = 0.25;
+    let next = this.context.currentTime + 0.06;
+    this.music.gain.setTargetAtTime(0.42, this.context.currentTime, 0.025);
+    const schedule = () => {
+      if (next < this.context.currentTime) next = this.context.currentTime + 0.06;
+      while (next < this.context.currentTime + 0.16) {
+        this.note(TUNE[index % TUNE.length] ?? 60, next, 0.18, 0.075, 'triangle', this.music);
+        if (index % 4 === 0) this.note(BASS[Math.floor(index / 8) % BASS.length] ?? 48, next, 0.55, 0.1, 'sine', this.music);
+        index++;
+        next += beat;
+      }
+    };
+    schedule();
+    this.timer = window.setInterval(schedule, 65);
+  }
+
+  cue(cue: Cue) {
+    if (this.context.state !== 'running') return;
+    CUES[cue].forEach((midi, index) =>
+      this.note(midi, this.context.currentTime + 0.02 + index * 0.085, 0.16, 0.09, 'triangle', this.context.destination));
+  }
+
+  private stopMusic() {
+    if (this.timer === undefined) return;
+    window.clearInterval(this.timer);
+    this.timer = undefined;
+    this.music.gain.setTargetAtTime(0, this.context.currentTime, 0.025);
+  }
+
+  private note(midi: number, start: number, duration: number, volume: number, type: OscillatorType, target: AudioNode) {
+    const oscillator = this.context.createOscillator();
+    const envelope = this.context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.value = 440 * 2 ** ((midi - 69) / 12);
+    envelope.gain.setValueAtTime(0.0001, start);
+    envelope.gain.exponentialRampToValueAtTime(volume, start + 0.018);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(envelope).connect(target);
+    oscillator.start(start);
+    oscillator.stop(start + duration);
+  }
+}

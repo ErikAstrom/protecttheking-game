@@ -1,7 +1,7 @@
 :root {
   color-scheme: dark;
   font-family: system-ui, sans-serif;
-  background: #0b1321;
+  background: radial-gradient(ellipse at top, #203841, #0b1321 66%);
   color: #eef4ff;
 }
 body { margin: 0; }
@@ -10,6 +10,7 @@ h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.2rem); }
 h2 { font-size: 1.15rem; margin: 0; }
 p { margin: 0.5rem 0; }
 header { margin-bottom: 1.25rem; }
+.audio-toggle { float: right; background: #183541; border-color: #52717c; color: #eef4ff; margin: 0 0 0.35rem 0.6rem; }
 .eyebrow { color: #ffe18a; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
 .teams, .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .team, .settings, .join, .status { background: #162438; border: 1px solid #405470; border-radius: 0.65rem; padding: 0.8rem; }
@@ -26,7 +27,25 @@ button:disabled { opacity: 0.48; cursor: default; }
 .settings, .round { margin-top: 0.75rem; }
 .fields { margin-top: 0.5rem; }
 .round, .legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; }
-canvas { width: min(100%, 70vh); height: auto; display: block; margin: 0.75rem auto; outline: 1px solid #566e8d; }
+canvas { width: min(100%, 135vh); height: auto; display: block; margin: 0.25rem auto; }
+.in-match { max-width: 1000px; }
+.in-match header { margin-bottom: 0.6rem; }
+.in-match h1 { font-size: 1.65rem; }
+.in-match header p, .in-match .team ul { display: none; }
+.in-match .team { padding: 0.38rem 0.65rem; }
+.in-match .team p { margin: 0.12rem 0; font-size: 0.78rem; }
+.round.urgent strong { color: #ffc46e; }
+.replay { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; margin-top: 0.65rem; padding: 0.45rem 0.65rem; border: 1px solid #977b42; border-radius: 0.55rem; background: #2c292b; }
+.replay strong { color: #ffe097; }
+.replay span { overflow-wrap: anywhere; }
+.replay button { margin: 0 0 0 auto; }
+.inventory { display: flex; align-items: center; gap: 0.65rem; margin-top: 0.65rem; min-height: 2rem; }
+.inventory strong { white-space: nowrap; font-size: 0.88rem; }
+.inventory ol { display: flex; gap: 0.35rem; margin: 0; padding: 0.15rem; overflow-x: auto; list-style: none; }
+.inventory li { flex: 0 0 auto; border: 1px solid #597082; border-radius: 0.45rem; padding: 0.2rem 0.43rem; background: #162438; }
+.inventory li:first-child { border-color: currentColor; display: flex; gap: 0.35rem; }
+.empty-queue { color: #a9bdc9; font-size: 0.88rem; }
+kbd { border: 1px solid #7f9aaf; border-radius: 0.28rem; padding: 0.12rem 0.26rem; }
 .legend { justify-content: center; }
 .strength { color: #ffb657; }
 .speed { color: #62e4a6; }

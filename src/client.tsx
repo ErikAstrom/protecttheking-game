@@ -1,58 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LIMITS, TEAMS } from './rules.ts';
+import { Arena, GLYPHS } from './arena.tsx';
+import { GameAudio } from './audio.ts';
+import { ITEMS, ITEM_KINDS, LIMITS, TEAMS } from './rules.ts';
 import type { Command, Direction, ServerMessage, Settings, State } from './rules.ts';
 import './style.css';
 
-const colors = { red: '#ff737b', blue: '#62bcff' };
-const pickupColors = { strength: '#ffb657', speed: '#62e4a6', slow: '#ce99ff' };
 const keys = new Map<string, Direction>([
   ['KeyW', 'up'], ['ArrowUp', 'up'], ['KeyS', 'down'], ['ArrowDown', 'down'],
   ['KeyA', 'left'], ['ArrowLeft', 'left'], ['KeyD', 'right'], ['ArrowRight', 'right'],
 ]);
 
-function Arena({ state, id }: { state: State; id: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || !canvas) return;
-    const size = state.settings.size;
-    const tile = canvas.width / size;
-    ctx.fillStyle = '#101d2e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#445873';
-    for (const { x, y } of state.walls) ctx.fillRect(x * tile, y * tile, tile + 0.1, tile + 0.1);
-    for (const { x, y, kind } of state.pickups) {
-      ctx.fillStyle = pickupColors[kind];
-      ctx.fillRect((x + 0.12) * tile, (y + 0.12) * tile, tile * 0.76, tile * 0.76);
-    }
-    for (const player of state.players) {
-      const x = (player.x + 0.5) * tile;
-      const y = (player.y + 0.5) * tile;
-      if (player.id === id || player.king) {
-        ctx.beginPath();
-        ctx.arc(x, y, tile * (player.king ? 0.85 : 0.63), 0, Math.PI * 2);
-        ctx.strokeStyle = player.king ? '#ffe18a' : '#fff';
-        ctx.lineWidth = Math.max(1.5, tile * 0.13);
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.arc(x, y, tile * 0.45, 0, Math.PI * 2);
-      ctx.fillStyle = colors[player.team];
-      ctx.fill();
-      if (player.strengthUntil > state.now) {
-        ctx.fillStyle = pickupColors.strength;
-        ctx.fillRect(x - tile * 0.16, y - tile * 0.16, tile * 0.32, tile * 0.32);
-      }
-    }
-  }, [state, id]);
-  return <canvas ref={ref} width={1024} height={1024} aria-label="Full game board" />;
-}
-
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
-  ['wins', 'Points to win'], ['size', 'Board side (tiles)'],
+  ['wins', 'Points to win'], ['size', 'Board side'], ['pickupCount', 'Pickups on board'],
 ] as const;
 
 function SettingsForm({ settings, send }: { settings: Settings; send: (command: Command) => void }) {
@@ -75,6 +36,13 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
           <option value="draw">Draw</option><option value="proximity">Proximity</option>
         </select>
       </label>
+      <label>Movement
+        <select value={draft.movement} onChange={event => setDraft({
+          ...draft, movement: event.currentTarget.value === 'smooth' ? 'smooth' : 'classic',
+        })}>
+          <option value="classic">Classic (tiles)</option><option value="smooth">Smooth (8 directions)</option>
+        </select>
+      </label>
     </div>
     <button>Apply settings</button>
   </form>;
@@ -87,6 +55,11 @@ function App() {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
   const [name, setName] = useState('');
+  const [sound, setSound] = useState(false);
+  const [soundPending, setSoundPending] = useState(false);
+  const audio = useRef<GameAudio | null>(null);
+  const audioPrevious = useRef<State | null>(null);
+  useEffect(() => () => audio.current?.close(), []);
   useEffect(() => {
     const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/game`);
     socket.current = ws;
@@ -107,17 +80,31 @@ function App() {
 
   const player = state?.players.find(candidate => candidate.id === id);
   const canMove = !!player && state?.phase === 'playing' && connected;
+  const smooth = state?.settings.movement === 'smooth';
   useEffect(() => {
     if (!canMove) return;
     const held = new Map<string, Direction>();
     let active: Direction | null = null;
     function update() {
-      const direction = [...held.values()].at(-1) ?? null;
+      const all = [...held.values()];
+      let direction = all.at(-1) ?? null;
+      if (smooth) {
+        const latestFirst = all.reverse();
+        const vertical = latestFirst.find(value => value === 'up' || value === 'down');
+        const horizontal = latestFirst.find(value => value === 'left' || value === 'right');
+        direction = vertical && horizontal ? `${vertical}-${horizontal}` : vertical ?? horizontal ?? null;
+      }
       if (direction === active) return;
       active = direction;
       transmit({ type: 'input', direction });
     }
     function down(event: KeyboardEvent) {
+      if (event.code === 'Space') {
+        if (event.target instanceof HTMLElement && event.target.closest('button, input, select, textarea, [contenteditable="true"]')) return;
+        event.preventDefault();
+        if (!event.repeat) transmit({ type: 'use-item' });
+        return;
+      }
       const direction = keys.get(event.code);
       if (!direction) return;
       event.preventDefault();
@@ -144,7 +131,43 @@ function App() {
       window.removeEventListener('blur', stop);
       document.removeEventListener('visibilitychange', stop);
     };
-  }, [canMove]);
+  }, [canMove, smooth]);
+
+  useEffect(() => {
+    const previous = audioPrevious.current;
+    audioPrevious.current = state;
+    const engine = audio.current;
+    if (!engine || !sound) return;
+    engine.setMusic(connected && state?.phase === 'playing');
+    if (!connected || !state || !previous || state === previous) return;
+    if (state.phase === 'playing' && previous.phase !== 'playing') engine.cue('round');
+    if (state.result && !previous.result) engine.cue(state.result.reason);
+    if (state.phase === 'playing' && state.round === previous.round) {
+      const local = state.players.find(member => member.id === id);
+      const old = previous.players.find(member => member.id === id);
+      if (local && old) {
+        if (local.collected > old.collected) engine.cue('pickup');
+        if (local.used > old.used) engine.cue('use');
+        if (local.tripped > old.tripped) engine.cue('trap');
+      }
+      if (state.deadline - state.now <= 10000 && previous.deadline - previous.now > 10000) engine.cue('urgent');
+    }
+  }, [state, id, sound, connected]);
+
+  async function toggleSound() {
+    setSoundPending(true);
+    try {
+      const engine = audio.current ??= new GameAudio();
+      if (sound) await engine.mute();
+      else await engine.enable();
+      setSound(!sound);
+    } catch (error) {
+      console.error('Could not change game audio:', error);
+      setError('Audio could not be changed in this browser.');
+    } finally {
+      setSoundPending(false);
+    }
+  }
 
   function transmit(command: Command) {
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(command));
@@ -159,8 +182,12 @@ function App() {
   const seconds = state ? Math.max(0, Math.ceil((state.deadline - state.now) / 1000)) : 0;
   const full = !!state && state.players.length === state.settings.teamSize * TEAMS.length;
   const result = state?.result;
-  return <main>
+  return <main className={state?.phase === 'playing' ? 'in-match' : ''}>
     <header>
+      <button className="audio-toggle" aria-pressed={sound} disabled={soundPending} onClick={event => {
+        event.currentTarget.blur();
+        void toggleSound();
+      }}>{sound ? 'Sound on' : 'Enable sound'}</button>
       <p className="eyebrow">LAN party game</p>
       <h1>Protect the King</h1>
       <p>Block their hunters. Tag their king.</p>
@@ -197,9 +224,9 @@ function App() {
         {!full && <p>Fill both teams before starting. Share <code>{location.origin}</code> from your LAN address.</p>}
       </>}
       {!lobby && <>
-        <section className="round" aria-label="Round status">
-          <strong>Round {state.round} · {seconds}s · First to {state.settings.wins}</strong>
-          {player ? <span>{player.king ? 'You are the king' : 'Guard or hunt'} · WASD / arrows
+        <section className={`round${seconds <= 10 && state.phase === 'playing' ? ' urgent' : ''}`} aria-label="Round status">
+          <strong>Round {state.round} · {seconds}s · First to {state.settings.wins} · {smooth ? 'Smooth' : 'Classic'}</strong>
+          {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
             {player.strengthUntil > state.now ? ' · Strength active' : ''}
             {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
           </span> : <span>Spectating until the match ends</span>}
@@ -210,9 +237,18 @@ function App() {
         </p>}
         {host && state.phase === 'between' && <button onClick={() => send({ type: 'next' })}>Next round</button>}
         {host && state.phase === 'finished' && <button onClick={() => send({ type: 'reset' })}>Back to lobby</button>}
-        <Arena state={state} id={id} />
-        <p className="legend"><span>Gold ring: king</span><span>White ring: you (when not king)</span>
-          <span className="strength">■ Strength</span><span className="speed">■ Speed</span><span className="slow">■ Slow trap</span></p>
+        {player && <section className="inventory" aria-label="Your item queue">
+          <strong><kbd>Space</kbd> Use first item</strong>
+          {player.inventory.length ? <ol aria-label="Items in pickup order">
+            {player.inventory.map((kind, index) => <li key={`${player.used + index}-${kind}`} className={kind}
+              title={ITEMS[kind].name} aria-label={`${index === 0 ? 'Next: ' : ''}${ITEMS[kind].name}`}>
+              <span aria-hidden="true">{GLYPHS[kind]}</span>{index === 0 && <span>{ITEMS[kind].name}</span>}
+            </li>)}
+          </ol> : <span className="empty-queue">No items yet — move over a pickup.</span>}
+        </section>}
+        <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} />
+        <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
+          {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}
     </>}
   </main>;

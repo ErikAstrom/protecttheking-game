@@ -1,0 +1,227 @@
+import { useEffect, useRef, useState } from 'react';
+import { ITEMS, REPLAY, TUNING } from './rules.ts';
+import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
+
+export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥' };
+const COLORS = { red: '#ff737b', blue: '#62bcff' };
+const WIDTH = 1000;
+const HEIGHT = 620;
+
+function draw(
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'walls'>, scene: ReplayFrame,
+  next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
+) {
+  const { size, movement } = board.settings;
+  const scale = 914 / size;
+  function project(x: number, y: number, z = 0): Point {
+    const depth = (y + 0.5) / size;
+    return { x: WIDTH / 2 + (x + 0.5 - size / 2) * scale * (0.83 + depth * 0.17), y: 29 + depth * 546 - z };
+  }
+  function polygon(fill: string, points: Point[]) {
+    ctx.beginPath();
+    points.forEach(({ x, y }, index) => index ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  function face(x: number, y: number, width: number, height: number, z = 0): [Point, Point, Point, Point] {
+    return [project(x, y, z), project(x + width, y, z), project(x + width, y + height, z), project(x, y + height, z)];
+  }
+  function ellipse(x: number, y: number, w: number, h: number, fill: string, stroke?: string) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, w, h, 0, 0, 2 * Math.PI);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  function text(label: string, x: number, y: number, size: number, fill: string) {
+    ctx.font = `bold ${size}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = fill;
+    ctx.fillText(label, x, y);
+  }
+
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  const [a, b, c, d] = face(-0.5, -0.5, size, size);
+  polygon('#0b2228', [d, c, { x: c.x, y: c.y + 21 }, { x: d.x, y: d.y + 21 }]);
+  const turf = ctx.createLinearGradient(0, a.y, 0, d.y);
+  turf.addColorStop(0, '#21484c');
+  turf.addColorStop(1, '#183a42');
+  ctx.fillStyle = turf;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  for (const point of [b, c, d]) ctx.lineTo(point.x, point.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#578187';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  if (movement === 'classic') {
+    ctx.beginPath();
+    const stride = Math.max(1, Math.ceil(size / 64));
+    for (let i = stride; i < size; i += stride) {
+      const top = project(i - 0.5, -0.5);
+      const bottom = project(i - 0.5, size - 0.5);
+      const left = project(-0.5, i - 0.5);
+      const right = project(size - 0.5, i - 0.5);
+      ctx.moveTo(top.x, top.y); ctx.lineTo(bottom.x, bottom.y);
+      ctx.moveTo(left.x, left.y); ctx.lineTo(right.x, right.y);
+    }
+    ctx.strokeStyle = '#92c5bb20';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  const crest = project((size - 1) / 2, (size - 1) / 2);
+  ellipse(crest.x, crest.y, 46, 26, '#90c6be0d', '#90c6be27');
+  text('♜', crest.x, crest.y - 2, 36, '#90c6be45');
+  polygon('#ff737b24', face(-0.5, -0.5, 7, 5));
+  polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
+
+  for (const trap of scene.traps) {
+    const p = project(trap.x, trap.y);
+    ellipse(p.x, p.y, Math.max(9, scale * 0.68), Math.max(5, scale * 0.4), '#a25be36c', COLORS[trap.team]);
+    text(GLYPHS.slow, p.x, p.y, 12, '#fff');
+  }
+  const actors: { depth: number; draw: () => void }[] = [];
+  for (const wall of board.walls) {
+    actors.push({ depth: wall.y + 0.5, draw: () => {
+      const x = wall.x - 0.5, y = wall.y - 0.5, h = Math.max(4, scale * 0.48);
+      const near = y + 1;
+      polygon('#10272d55', face(x + 0.13, y + 0.35, 1, 1));
+      polygon('#324953', [project(x, near, h), project(x + 1, near, h), project(x + 1, near), project(x, near)]);
+      polygon('#657e82', face(x, y, 1.01, 1, h));
+      polygon('#acc0bc', face(x + 0.12, y + 0.14, 0.76, 0.15, h));
+    } });
+  }
+  for (const { x, y, kind } of scene.pickups) {
+    actors.push({ depth: y, draw: () => {
+      const p = project(x, y);
+      const color = ITEMS[kind].color;
+      const r = Math.min(20, Math.max(11, scale * 0.55));
+      const lift = 6 + Math.sin(time / 270 + x + y) * 2.5;
+      ellipse(p.x, p.y, r * 1.35, r * 0.64, `${color}34`, `${color}91`);
+      ellipse(p.x, p.y - lift, r, r, '#142431', color);
+      text(GLYPHS[kind], p.x, p.y - lift, r * 1.32, color);
+    } });
+  }
+  for (const player of scene.players) {
+    const target = next.players.find(candidate => candidate.id === player.id) ?? player;
+    const x = player.x + (target.x - player.x) * fraction;
+    const y = player.y + (target.y - player.y) * fraction;
+    actors.push({ depth: y, draw: () => {
+      const p = project(x, y);
+      const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1);
+      const team = COLORS[player.team];
+      ellipse(p.x, p.y + 2, r * 1.26, r * 0.63, '#07171c8f',
+        player.id === id ? '#fff' : player.king ? '#ffe097' : undefined);
+      if (player.strengthUntil > scene.now || player.paceUntil > scene.now) {
+        const color = player.strengthUntil > scene.now ? ITEMS.strength.color :
+          player.pace === 'speed' ? ITEMS.speed.color : ITEMS.slow.color;
+        ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
+      }
+      polygon(team, [
+        { x: p.x, y: p.y - r * 2.02 }, { x: p.x + r * 0.89, y: p.y - r * 1.5 },
+        { x: p.x + r, y: p.y - r * 0.44 }, { x: p.x, y: p.y + r * 0.15 },
+        { x: p.x - r, y: p.y - r * 0.44 }, { x: p.x - r * 0.89, y: p.y - r * 1.5 },
+      ]);
+      if (player.king) {
+        const cy = p.y - r * 2.02;
+        polygon('#ffdc78', [
+          { x: p.x - r, y: cy - r * 0.77 }, { x: p.x - r * 0.42, y: cy - r * 0.53 },
+          { x: p.x, y: cy - r * 1.14 }, { x: p.x + r * 0.42, y: cy - r * 0.53 },
+          { x: p.x + r, y: cy - r * 0.77 }, { x: p.x + r * 0.68, y: cy + r * 0.22 },
+          { x: p.x - r * 0.68, y: cy + r * 0.22 },
+        ]);
+        ellipse(p.x, cy - r * 0.19, r * 0.15, r * 0.18, '#7d361c');
+        text(player.id === id ? 'YOUR KING' : 'KING', p.x, cy - r * 1.63, 13, '#ffe097');
+      } else {
+        ellipse(p.x, p.y - r * 1.48, r * 0.61, r * 0.62, '#dce6e6', '#283c49');
+        if (player.id === id) text('YOU', p.x, p.y - r * 2.55, 13, '#fff');
+      }
+    } });
+  }
+  actors.sort((left, right) => left.depth - right.depth);
+  for (const actor of actors) actor.draw();
+  if (replay) {
+    for (const [participant, label, color] of [
+      [replay.hunterId, 'HUNTER', '#b9fff4'], [replay.kingId, 'CAPTURED KING', '#ffe097'],
+    ] as const) {
+      const start = scene.players.find(player => player.id === participant);
+      if (!start) continue;
+      const end = next.players.find(player => player.id === participant) ?? start;
+      const p = project(start.x + (end.x - start.x) * fraction, start.y + (end.y - start.y) * fraction);
+      ellipse(p.x, p.y + 2, Math.max(12, scale * 0.62), Math.max(7, scale * 0.34), `${color}40`, color);
+      text(label, Math.max(60, Math.min(WIDTH - 60, p.x)), Math.min(HEIGHT - 14, p.y + (start.king ? 34 : 18)), 13, color);
+    }
+    if (impact) {
+      const p = project(replay.contact.x, replay.contact.y);
+      ellipse(p.x, p.y, 22, 12, '#ffc65e36', '#ffcf70');
+      text('✦', p.x, p.y - 3, 24, '#ffe097');
+    }
+  }
+}
+
+export function Arena({ state, id }: { state: State; id: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const latest = useRef({ state, previous: state, received: 0 });
+  const [playingReplay, setPlayingReplay] = useState(() =>
+    !!state.replay && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => {
+    const previous = latest.current.state;
+    latest.current = { state, previous: previous.round === state.round ? previous : state, received: performance.now() };
+  }, [state]);
+  useEffect(() => {
+    const ctx = ref.current?.getContext('2d');
+    if (!ctx) return;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let frame = 0;
+    let started: number | undefined;
+    let index = 0;
+    function render(time: number) {
+      if (!ctx) return;
+      const { state, previous, received } = latest.current;
+      const smooth = state.settings.movement === 'smooth';
+      const replay = playingReplay ? state.replay : null;
+      const first = replay?.frames[0];
+      const last = replay?.frames.at(-1);
+      if (replay && first && last) {
+        started ??= time;
+        const elapsed = time - started;
+        const duration = (last.now - first.now) / REPLAY.speed;
+        const at = first.now + elapsed * REPLAY.speed;
+        while ((replay.frames[index + 1]?.now ?? Infinity) <= at) index++;
+        const scene = replay.frames[index] ?? last;
+        const next = replay.frames[index + 1] ?? scene;
+        const fraction = smooth && next !== scene ? (at - scene.now) / (next.now - scene.now) : 0;
+        draw(ctx, state, scene, next, id, fraction, still ? 0 : at - first.now, replay, elapsed >= duration);
+        if (elapsed >= duration + REPLAY.holdMs) {
+          setPlayingReplay(false);
+          return;
+        }
+      } else {
+        const interval = Math.max(TUNING.tickMs, state.now - previous.now);
+        const fraction = smooth ? Math.max(0, Math.min(1, (time - received) / interval)) : 1;
+        draw(ctx, state, state, previous, id, 1 - fraction, still ? 0 : time);
+      }
+      frame = requestAnimationFrame(render);
+    }
+    frame = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(frame);
+  }, [id, playingReplay]);
+  const replay = state.replay;
+  const hunter = replay && state.players.find(player => player.id === replay.hunterId);
+  const king = replay && state.players.find(player => player.id === replay.kingId);
+  return <>
+    {replay && <section className="replay" aria-label="Capture replay">
+      <strong>{playingReplay ? 'Instant replay' : 'Capture replay'}</strong>
+      <span>{hunter?.name} captured {king?.name}</span>
+      <button onClick={() => setPlayingReplay(!playingReplay)}>{playingReplay ? 'Skip replay' : 'Watch replay'}</button>
+    </section>}
+    <canvas ref={ref} width={WIDTH} height={HEIGHT} aria-label={playingReplay ? 'Capture replay board' : 'Full game board'} />
+  </>;
+}

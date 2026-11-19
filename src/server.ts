@@ -91,6 +91,9 @@ sockets.on('connection', socket => {
           else respond('Invalid direction.');
           return;
         }
+        case 'use-item':
+          game.useItem(id, Date.now());
+          return;
         case 'team':
           error = command.team === 'red' || command.team === 'blue' ? game.switchTeam(id, command.team) : 'Invalid team.';
           break;
