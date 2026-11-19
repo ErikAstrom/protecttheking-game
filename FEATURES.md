@@ -68,6 +68,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:**
   - 2026-11-19 — Plan: Penguin world gets its own layout of a few chunky, mirrored icebergs/ice blocks with wide open lanes; Castle keeps the dense walls. Units/walls get bigger on screen by shrinking the default board (everything scales with `914 / size`), not by changing drawing code, so this stacks with the "larger characters" claim above without touching `arena.tsx`. Water holes are NOT part of this (main session builds them in `src/holes.ts`).
 
+### Golden Gun sound cues
+- **Status:** in progress — Copilot, 2026-11-19 13:06
+- **Requested by:** Playtest feedback
+- **Description:** Prepare original retro spy-style cues for the Golden Gun appearing and being collected.
+- **Files:** `src/audio.ts`, `src/audio.test.ts`
+- **Notes:** Provide `GameAudio.cue('golden-gun-spawn')` and `GameAudio.cue('golden-gun-pickup')`; leave gameplay and event wiring to the Golden Gun feature.
+
 ## Open
 
 _No open items._
