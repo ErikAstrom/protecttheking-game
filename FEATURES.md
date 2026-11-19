@@ -64,6 +64,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** new `src/sword.ts`, `src/sword.test.ts`, `src/swordfx.ts`; small hooks in `src/rules.ts` (item, tuning, player field, slash state), `src/game.ts` (activate, chop check), `src/arena.tsx` (draw hook), `src/client.tsx` (HUD).
 - **Notes:**
 
+### Action-hero bot names
+- **Status:** in progress — Copilot, 2026-11-19 14:17
+- **Requested by:** Playtest feedback
+- **Description:** Give balancing bots original action-hero parody names with a visible bot marker.
+- **Files:** `src/game.ts`, `src/bots.test.ts`, and `README.md`.
+
 ## Open
 
 ### Wire golden gun and splash sounds
