@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Rooms & Corridors map
+- **Status:** in progress — Copilot, 2026-11-19 13:35
+- **Requested by:** Playtest feedback
+- **Description:** Add a selectable map with actual rooms, long walls, and wide doorways instead of scattered obstacles.
+- **Files:** new `src/rooms.ts` and focused tests; small hooks in `src/game.ts`, `src/rules.ts`, `src/client.tsx`.
+- **Notes:** Leave Penguin and Castle layouts to their existing owners.
+
 ### Shaped arenas, natural terrain, and sudden tilt
 - **Status:** in progress — Copilot, 2026-11-19 13:34
 - **Requested by:** Playtest feedback
@@ -90,6 +97,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Requested by:** Playtest feedback
 - **Description:** Let hosts make a lobby private. Players join with a display name and temporary room code instead of creating an account; host controls require a separate host session.
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
+
+### Space map with a black hole
+- **Status:** open
+- **Requested by:** Playtest feedback
+- **Description:** Add a selectable Space arena where a temporary black hole appears at random and slowly pulls nearby players inward without eliminating anyone.
+- **Notes:** Follow Rooms & Corridors. Keep the pull escapable and the hazard visible.
 
 ## Done
 
