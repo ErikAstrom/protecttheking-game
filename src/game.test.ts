@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING } from './rules.ts';
 import type { Settings } from './rules.ts';
 
 function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10, y: 21, kind: 'wall' }])) {
-  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalPairs: 0, ...overrides }), undefined);
+  assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalPairs: 0, movement: 'classic', ...overrides }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
   game.state.terrain = [];

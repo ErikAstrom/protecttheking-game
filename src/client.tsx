@@ -3,8 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
-import { ITEMS, ITEM_KINDS, LIMITS, SURFACES, TEAMS, surfaceAt } from './rules.ts';
-import type { Command, Direction, ServerMessage, Settings, State } from './rules.ts';
+import { ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, surfaceAt } from './rules.ts';
+import type { Command, Direction, Movement, ServerMessage, Settings, State, World } from './rules.ts';
+
+const MOVEMENT_LABELS: Record<Movement, string> = {
+  ice: 'Ice (slippery momentum)', smooth: 'Smooth (8 directions)', classic: 'Classic (tiles)',
+};
+const WORLD_LABELS: Record<World, string> = { penguin: 'Penguin world (ice floe)', arena: 'Castle arena' };
 import './style.css';
 
 const keys = new Map<string, Direction>([
@@ -41,9 +46,16 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
       </label>
       <label>Movement
         <select value={draft.movement} onChange={event => setDraft({
-          ...draft, movement: event.currentTarget.value === 'smooth' ? 'smooth' : 'classic',
+          ...draft, movement: MOVEMENTS.find(mode => mode === event.currentTarget.value) ?? 'ice',
         })}>
-          <option value="classic">Classic (tiles)</option><option value="smooth">Smooth (8 directions)</option>
+          {MOVEMENTS.map(mode => <option key={mode} value={mode}>{MOVEMENT_LABELS[mode]}</option>)}
+        </select>
+      </label>
+      <label>World
+        <select value={draft.world} onChange={event => setDraft({
+          ...draft, world: WORLDS.find(option => option === event.currentTarget.value) ?? 'penguin',
+        })}>
+          {WORLDS.map(option => <option key={option} value={option}>{WORLD_LABELS[option]}</option>)}
         </select>
       </label>
     </div>
@@ -141,7 +153,8 @@ function App() {
 
   const player = state?.players.find(candidate => candidate.id === id);
   const canMove = !!player && state?.phase === 'playing' && connected;
-  const smooth = state?.settings.movement === 'smooth';
+  const smooth = !!state && isFractional(state.settings.movement);
+  const penguin = state?.settings.world === 'penguin';
   useEffect(() => {
     if (!canMove) return;
     const held = new Map<string, Direction>();
@@ -258,7 +271,8 @@ function App() {
       {soundControl}
       <p className="eyebrow">LAN party game</p>
       <h1>Protect the King</h1>
-      <p>Block their hunters. Tag their king. <a href="/watch" target="_blank" rel="noopener">Open live viewer (new tab)</a></p>
+      <p>{penguin ? 'Slide in, block their hunters, tag their king penguin.' : 'Block their hunters. Tag their king.'}{' '}
+        <a href="/watch" target="_blank" rel="noopener">Open live viewer (new tab)</a></p>
     </header>
     {error && <p className="status" role="alert">{error}</p>}
     {state?.notice && <p className="status" role="status">{state.notice}</p>}
@@ -293,11 +307,11 @@ function App() {
       </>}
       {!lobby && <>
         <section className={`round${seconds <= 10 && state.phase === 'playing' ? ' urgent' : ''}`} aria-label="Round status">
-          <strong>Round {state.round} · {seconds}s · First to {state.settings.wins} · {smooth ? 'Smooth' : 'Classic'}</strong>
+          <strong>Round {state.round} · {seconds}s · First to {state.settings.wins} · {state.settings.movement === 'ice' ? 'Ice' : smooth ? 'Smooth' : 'Classic'}</strong>
           {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
             {player.strengthUntil > state.now ? ' · Strength active' : ''}
             {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
-            {surface ? ` · ${SURFACES[surface].label}` : ''}
+            {surface ? ` · ${penguin ? (surface === 'ice' ? 'Black ice' : 'Slush') : SURFACES[surface].label}` : ''}
           </span> : <span>Spectating until the match ends</span>}
         </section>
         {result && <p className="status" role="status">
@@ -324,7 +338,7 @@ function App() {
         <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Matching numbers: linked portals</span>}
-          <span className="ice">Ice: faster{smooth ? ', wider turns' : ''}</span><span className="sand">Quicksand: slower</span>
+          <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}
     </>}

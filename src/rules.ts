@@ -30,9 +30,16 @@ export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
 export type Trap = Point & { team: Team; expires: number };
 export type PortalPair = { a: Point; b: Point };
+export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
+export type Movement = (typeof MOVEMENTS)[number];
+export const WORLDS = ['penguin', 'arena'] as const;
+export type World = (typeof WORLDS)[number];
+/** True for movement modes with fractional coordinates (Smooth and Ice). Use this instead of `movement === 'smooth'`. */
+export const isFractional = (movement: Movement) => movement !== 'classic';
 export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
-  timeout: 'draw' | 'proximity'; movement: 'classic' | 'smooth'; pickupCount: number; portalPairs: number;
+  timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalPairs: number;
+  world: World;
 };
 export const LIMITS = {
   teamSize: { min: 2, max: 8, initial: 4 },
@@ -45,7 +52,8 @@ export const LIMITS = {
 export const DEFAULT_SETTINGS: Settings = {
   teamSize: LIMITS.teamSize.initial, seconds: LIMITS.seconds.initial,
   wins: LIMITS.wins.initial, size: LIMITS.size.initial, timeout: 'draw',
-  movement: 'classic', pickupCount: LIMITS.pickupCount.initial, portalPairs: LIMITS.portalPairs.initial,
+  movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalPairs: LIMITS.portalPairs.initial,
+  world: 'penguin',
 };
 export const TUNING = {
   pushTiles: 2, strengthMs: 6000, speedMs: 4000, slowMs: 3000,
@@ -56,6 +64,23 @@ export const TUNING = {
   trapLifetimeMs: 20000,
   kingRechargeMs: 10000, recoilDistance: 1, recoilMs: 180,
 };
+// Penguin world ice physics (used by src/ice.ts). Velocities in tiles/ms.
+export const ICE = {
+  /** Time to accelerate from standstill to top speed while holding a direction. */
+  accelMs: 520,
+  /** How fast sideways momentum fades after a turn (higher = longer drift). */
+  gripMs: 340,
+  /** How fast you coast to a stop after releasing all keys (higher = longer slide). */
+  glideMs: 950,
+  /** Above top speed (e.g. after a speed boost ends), excess speed bleeds off at this fraction of the acceleration. */
+  overspeedBleed: 0.45,
+  /** Top speed relative to normal movement speed. */
+  topSpeedScale: 1.1,
+  /** Fraction of the into-wall speed kept, reversed, when a penguin slides into a wall. */
+  wallBounce: 0.25,
+  /** Below this speed (tiles/ms) a coasting penguin stops completely. */
+  restSpeed: 0.0004,
+} as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
@@ -95,13 +120,13 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function readSettings(value: unknown): Settings | null {
   if (!isRecord(value) || (value.timeout !== 'draw' && value.timeout !== 'proximity')) return null;
-  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalPairs } = value;
+  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalPairs, world } = value;
   function valid(key: keyof typeof LIMITS, n: unknown): n is number {
     const { min, max } = LIMITS[key];
     return typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
   }
   return valid('teamSize', teamSize) && valid('seconds', seconds) &&
     valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) && valid('portalPairs', portalPairs) &&
-    (movement === 'classic' || movement === 'smooth')
-    ? { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalPairs } : null;
+    MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
+    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalPairs, world: world as World } : null;
 }

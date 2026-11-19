@@ -1,4 +1,5 @@
-import { DEFAULT_SETTINGS, DIRECTIONS, ITEM_KINDS, REPLAY, SURFACES, TEAMS, TUNING, surfaceAt } from './rules.ts';
+import { afterSlide, iceVelocity } from './ice.ts';
+import { DEFAULT_SETTINGS, DIRECTIONS, ICE, ITEM_KINDS, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
 import type { Direction, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 
@@ -106,7 +107,7 @@ export class Game {
   input(id: string, direction: Direction | null): void {
     if (direction === null || (this.state.settings.movement === 'classic' && direction.includes('-'))) {
       this.inputs.delete(id);
-      this.velocities.delete(id);
+      if (this.state.settings.movement !== 'ice') this.velocities.delete(id);
     }
     else if (this.state.phase === 'playing') this.inputs.set(id, direction);
   }
@@ -150,6 +151,12 @@ export class Game {
     let attemptedMove = false;
     for (const player of ordered) {
       const direction = this.inputs.get(player.id);
+      if (settings.movement === 'ice') {
+        if (player.recoilUntil > now) continue;
+        attemptedMove = this.glide(player, direction ? DIRECTIONS[direction] : null, elapsed, now) || attemptedMove;
+        if (this.state.phase !== 'playing') return;
+        continue;
+      }
       if (!direction || player.recoilUntil > now || (this.nextMove.get(player.id) ?? 0) > now) continue;
       attemptedMove = true;
       const delta = DIRECTIONS[direction];
@@ -267,7 +274,7 @@ export class Game {
 
   private spawnOpen(point: Point): boolean {
     const { settings, pickups, players, portals } = this.state;
-    return !this.isBlocked(point, settings.movement === 'smooth') &&
+    return !this.isBlocked(point, isFractional(settings.movement)) &&
       [...pickups, ...players, ...portals.flatMap(({ a, b }) => [a, b])]
         .every(other => distance(other, point) >= TUNING.pickupSpacing);
   }
@@ -277,7 +284,7 @@ export class Game {
     const width = settings.size - 4;
     const coordinate = () => {
       const random = Math.random() * width;
-      return 2 + (settings.movement === 'smooth' ? random : Math.floor(random));
+      return 2 + (isFractional(settings.movement) ? random : Math.floor(random));
     };
     for (let attempt = 0; attempt < 64; attempt++) {
       const point = { x: coordinate(), y: coordinate() };
@@ -332,6 +339,24 @@ export class Game {
     } else {
       this.velocities.set(player.id, { x: (player.x - x) / elapsed, y: (player.y - y) / elapsed });
     }
+  }
+
+  /** Ice movement: momentum, drift on turns, and gliding after release. Returns true if the penguin moved or had input. */
+  private glide(player: Player, direction: Point | null, elapsed: number, now: number): boolean {
+    const last = this.velocities.get(player.id) ?? { x: 0, y: 0 };
+    if (elapsed <= 0 || (!direction && !last.x && !last.y)) return false;
+    const topSpeed = ICE.topSpeedScale / this.moveInterval(player, now);
+    const velocity = iceVelocity(last, direction, topSpeed, elapsed);
+    const { x, y, portalTrips } = player;
+    this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);
+    if (player.recoilUntil > now) this.velocities.delete(player.id);
+    else if (player.portalTrips !== portalTrips) this.velocities.set(player.id, velocity);
+    else {
+      const next = afterSlide(velocity, { x: player.x - x, y: player.y - y }, elapsed);
+      if (next.x || next.y) this.velocities.set(player.id, next);
+      else this.velocities.delete(player.id);
+    }
+    return true;
   }
 
   private moveSmooth(player: Player, delta: Point, now: number): void {
@@ -419,7 +444,7 @@ export class Game {
   }
 
   private touches(a: Point, b: Point): boolean {
-    return this.state.settings.movement === 'smooth' ? distance(a, b) <= TUNING.pickupRadius : sameTile(a, b);
+    return isFractional(this.state.settings.movement) ? distance(a, b) <= TUNING.pickupRadius : sameTile(a, b);
   }
 
   private enter(player: Player, now: number): void {

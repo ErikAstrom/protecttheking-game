@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReplayCue } from './audio.ts';
-import { ITEMS, REPLAY, TUNING } from './rules.ts';
+import { drawIceBlock, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
+import { ITEMS, REPLAY, TUNING, isFractional } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥' };
@@ -13,7 +14,8 @@ function draw(
   ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
-  const { size, movement } = board.settings;
+  const { size, movement, world } = board.settings;
+  const penguin = world === 'penguin';
   const scale = 914 / size;
   function project(x: number, y: number, z = 0): Point {
     const depth = (y + 0.5) / size;
@@ -49,68 +51,73 @@ function draw(
   }
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  const [a, b, c, d] = face(-0.5, -0.5, size, size);
-  polygon('#0b2228', [d, c, { x: c.x, y: c.y + 21 }, { x: d.x, y: d.y + 21 }]);
-  const turf = ctx.createLinearGradient(0, a.y, 0, d.y);
-  turf.addColorStop(0, '#315749');
-  turf.addColorStop(1, '#23453c');
-  ctx.fillStyle = turf;
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  for (const point of [b, c, d]) ctx.lineTo(point.x, point.y);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#578187';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  const laneWidth = 2;
-  const middle = (size - laneWidth - 1) / 2;
-  const cobble = '#78898469';
-  polygon(cobble, face(-0.5, middle, size, laneWidth));
-  polygon(cobble, face(middle, -0.5, laneWidth, size / 2 - laneWidth / 2));
-  polygon(cobble, face(middle, middle + laneWidth, laneWidth, size / 2 - laneWidth / 2));
-  const cobbleStride = Math.max(2, Math.floor(size / 32));
-  for (let i = 0; i < size - cobbleStride; i += cobbleStride) {
-    polygon('#b5beb047', face(i, middle + 0.3, cobbleStride * 0.65, 0.48));
-    polygon('#b5beb047', face(middle + 0.86, i, 0.48, cobbleStride * 0.65));
-  }
-  for (const { x, y, width, height, kind } of board.terrain) {
-    const ice = kind === 'ice';
-    const left = x - 0.5, top = y - 0.5;
-    polygon(ice ? '#5d9bb4' : '#895b3e', face(left, top, width, height));
-    polygon(ice ? '#93d3dc' : '#b78354', face(left + 0.23, top + 0.23, width - 0.46, height - 0.46));
-    for (let i = 1; i < 4; i++) {
-      const sx = left + width * i / 4;
-      const sy = top + height * (ice ? i : 4 - i) / 4;
-      if (ice) {
-        polygon('#edffff9c', [project(sx - width * 0.14, sy + height * 0.11),
-          project(sx + width * 0.14, sy - height * 0.16), project(sx + width * 0.03, sy + height * 0.08)]);
-      } else {
-        const point = project(sx, sy);
-        ellipse(point.x, point.y, Math.max(4, width * scale * 0.1), Math.max(2, height * scale * 0.042), '#865c47', '#d4a36a');
+  if (penguin) {
+    drawIceFloe(ctx, project, size, WIDTH, HEIGHT, time);
+    drawPenguinTerrain(ctx, project, board.terrain);
+  } else {
+    const [a, b, c, d] = face(-0.5, -0.5, size, size);
+    polygon('#0b2228', [d, c, { x: c.x, y: c.y + 21 }, { x: d.x, y: d.y + 21 }]);
+    const turf = ctx.createLinearGradient(0, a.y, 0, d.y);
+    turf.addColorStop(0, '#315749');
+    turf.addColorStop(1, '#23453c');
+    ctx.fillStyle = turf;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    for (const point of [b, c, d]) ctx.lineTo(point.x, point.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#578187';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const laneWidth = 2;
+    const middle = (size - laneWidth - 1) / 2;
+    const cobble = '#78898469';
+    polygon(cobble, face(-0.5, middle, size, laneWidth));
+    polygon(cobble, face(middle, -0.5, laneWidth, size / 2 - laneWidth / 2));
+    polygon(cobble, face(middle, middle + laneWidth, laneWidth, size / 2 - laneWidth / 2));
+    const cobbleStride = Math.max(2, Math.floor(size / 32));
+    for (let i = 0; i < size - cobbleStride; i += cobbleStride) {
+      polygon('#b5beb047', face(i, middle + 0.3, cobbleStride * 0.65, 0.48));
+      polygon('#b5beb047', face(middle + 0.86, i, 0.48, cobbleStride * 0.65));
+    }
+    for (const { x, y, width, height, kind } of board.terrain) {
+      const ice = kind === 'ice';
+      const left = x - 0.5, top = y - 0.5;
+      polygon(ice ? '#5d9bb4' : '#895b3e', face(left, top, width, height));
+      polygon(ice ? '#93d3dc' : '#b78354', face(left + 0.23, top + 0.23, width - 0.46, height - 0.46));
+      for (let i = 1; i < 4; i++) {
+        const sx = left + width * i / 4;
+        const sy = top + height * (ice ? i : 4 - i) / 4;
+        if (ice) {
+          polygon('#edffff9c', [project(sx - width * 0.14, sy + height * 0.11),
+            project(sx + width * 0.14, sy - height * 0.16), project(sx + width * 0.03, sy + height * 0.08)]);
+        } else {
+          const point = project(sx, sy);
+          ellipse(point.x, point.y, Math.max(4, width * scale * 0.1), Math.max(2, height * scale * 0.042), '#865c47', '#d4a36a');
+        }
       }
     }
-  }
-  if (movement === 'classic') {
-    ctx.beginPath();
-    const stride = Math.max(1, Math.ceil(size / 64));
-    for (let i = stride; i < size; i += stride) {
-      const top = project(i - 0.5, -0.5);
-      const bottom = project(i - 0.5, size - 0.5);
-      const left = project(-0.5, i - 0.5);
-      const right = project(size - 0.5, i - 0.5);
-      ctx.moveTo(top.x, top.y); ctx.lineTo(bottom.x, bottom.y);
-      ctx.moveTo(left.x, left.y); ctx.lineTo(right.x, right.y);
+    if (movement === 'classic') {
+      ctx.beginPath();
+      const stride = Math.max(1, Math.ceil(size / 64));
+      for (let i = stride; i < size; i += stride) {
+        const top = project(i - 0.5, -0.5);
+        const bottom = project(i - 0.5, size - 0.5);
+        const left = project(-0.5, i - 0.5);
+        const right = project(size - 0.5, i - 0.5);
+        ctx.moveTo(top.x, top.y); ctx.lineTo(bottom.x, bottom.y);
+        ctx.moveTo(left.x, left.y); ctx.lineTo(right.x, right.y);
+      }
+      ctx.strokeStyle = '#92c5bb20';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
-    ctx.strokeStyle = '#92c5bb20';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    const crest = project((size - 1) / 2, (size - 1) / 2);
+    ellipse(crest.x, crest.y, 46, 26, '#90c6be0d', '#90c6be27');
+    text('♜', crest.x, crest.y - 2, 36, '#90c6be45');
+    polygon('#ff737b24', face(-0.5, -0.5, 7, 5));
+    polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
   }
-  const crest = project((size - 1) / 2, (size - 1) / 2);
-  ellipse(crest.x, crest.y, 46, 26, '#90c6be0d', '#90c6be27');
-  text('♜', crest.x, crest.y - 2, 36, '#90c6be45');
-  polygon('#ff737b24', face(-0.5, -0.5, 7, 5));
-  polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
   for (const [index, pair] of board.portals.entries()) {
     const color = PORTAL_COLORS[index] ?? PORTAL_COLORS[0] ?? '#fff';
     for (const point of [pair.a, pair.b]) {
@@ -130,6 +137,7 @@ function draw(
   for (const obstacle of board.obstacles) {
     actors.push({ depth: obstacle.y + 0.5, draw: () => {
       const { kind } = obstacle;
+      if (penguin) return drawIceBlock(ctx, project, obstacle, scale);
       const x = obstacle.x - 0.5, y = obstacle.y - 0.5;
       const h = Math.max(4, scale * (kind === 'pillar' ? 0.87 : 0.48));
       const near = y + 1;
@@ -163,6 +171,10 @@ function draw(
     const blend = player.portalTrips === target.portalTrips ? fraction : 0;
     const x = player.x + (target.x - player.x) * blend;
     const y = player.y + (target.y - player.y) * blend;
+    // Movement per server tick in tiles, for penguin facing, leaning and spray.
+    const per = replay ? TUNING.tickMs / REPLAY.sampleMs : -1;
+    const motion = player.portalTrips === target.portalTrips
+      ? { x: (target.x - player.x) * per, y: (target.y - player.y) * per } : { x: 0, y: 0 };
     actors.push({ depth: y, draw: () => {
       const p = project(x, y);
       const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1);
@@ -174,6 +186,11 @@ function draw(
         const color = player.strengthUntil > scene.now ? ITEMS.strength.color :
           player.pace === 'speed' ? ITEMS.speed.color : ITEMS.slow.color;
         ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
+      }
+      if (penguin) {
+        return drawPenguin(ctx, {
+          at: p, r, team, teamLetter: player.team === 'red' ? 'R' : 'B', king: player.king, you: player.id === id, motion, time,
+        });
       }
       polygon(player.king ? team : '#253847', [
         { x: p.x, y: p.y - r * 2.02 }, { x: p.x + r * 0.89, y: p.y - r * 1.5 },
@@ -253,7 +270,7 @@ export function Arena({ state, id, onReplayCue }: { state: State; id: string; on
     function render(time: number) {
       if (!ctx) return;
       const { state, previous, received } = latest.current;
-      const smooth = state.settings.movement === 'smooth';
+      const smooth = isFractional(state.settings.movement);
       const replay = playingReplay ? state.replay : null;
       const first = replay?.frames[0];
       const last = replay?.frames.at(-1);
