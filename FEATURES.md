@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Water holes in the ice
-- **Status:** in progress — Claude (Erik's session), 2026-11-19 14:35 (starts after Golden gun lands, since it reuses its death/respawn)
-- **Requested by:** Erik
-- **Description:** Holes in the ice sheet where you fall into the water. Falling in kills you and you respawn in your starting box, like being shot.
-- **Files:** new `src/holes.ts`, `src/holes.test.ts`; hooks in `src/game.ts`, `src/rules.ts`, `src/penguin.ts`/`src/arena.tsx` (drawing). Not `src/layout.ts` (that's "Open ice sheet layout").
-- **Notes:**
-
 ### Golden Gun sound cues
 - **Status:** in progress — Copilot, 2026-11-19 13:06
 - **Requested by:** Playtest feedback
@@ -67,9 +60,22 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## Open
 
-_No open items._
+### Wire golden gun and splash sounds
+- **Status:** open (waiting on "Golden Gun sound cues")
+- **Requested by:** Claude (follow-up to Golden gun / Water holes)
+- **Description:** Once `GameAudio.cue('golden-gun-spawn' | 'golden-gun-pickup')` exist, play them from the client when a gun pickup appears / is collected (diff `state.pickups` and the player's inventory like the existing pickup cue). Also add and play cues for a shot (`state.shots` gains an entry) and a splash (`state.splashes` gains an entry).
+- **Files:**
+- **Notes:**
 
 ## Done
+
+### Water holes in the ice
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** Holes in the ice sheet where you fall into the water. Falling in kills you and you respawn in your starting box, like being shot.
+- **Files:** new `src/holes.ts`, `src/holes.test.ts`; hooks in `src/game.ts`, `src/rules.ts`, `src/penguin.ts`/`src/arena.tsx` (drawing). Not `src/layout.ts` (that's "Open ice sheet layout").
+- **Notes:**
+  - 2026-11-19 — Done in `Add water holes to the ice sheet`. Mirrored hole pairs (3 on the 48 board; fits 200/200 generated ice sheets at sizes 32/48/64), Penguin world only. Falling in reuses the golden gun's out-of-play + respawn (3 s, starting box); kings drown and respawn too, no points. 7 tests in `src/holes.test.ts` (placement, Ice slide-in, Classic step-in, forgiving rim, kings, strength push into water, no pickups in water, none in Castle arena). Browser-verified: slid into a hole, SPLASH!, HUD countdown, respawned in red box.
 
 ### Open ice sheet layout
 - **Status:** done — 2026-11-19

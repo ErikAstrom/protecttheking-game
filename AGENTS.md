@@ -46,6 +46,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 | Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
 | Pickups | Modify movement or collision | Collect into an unlimited per-round FIFO queue. Strength lasts six seconds and refreshes without stacking. Speed lasts four seconds. A deployed slow trap expires after 20 seconds or on first enemy contact, slowing them for three seconds. |
 | Golden gun | Rare weapon | Never an opening pickup: each pickup respawn has an 8% chance to be a gun, with at most one gun on the board. While it is the first queued item, Space fires a shot in the direction the holder last moved (3 shots, then it leaves the queue). Shots travel up to 14 tiles, stop at obstacles, pass through teammates, and are absorbed harmlessly by kings of either team: **kings can never be shot**. A shot enemy non-king is out of play (invisible, not solid, can't act, not counted for timeout proximity) and respawns in their team's 7×5 starting box after 3 seconds. Logic in `src/gun.ts` + `Game.fireGun/respawn`; tuning in `GUN`; drawing in `src/gunfx.ts`. |
+| Water holes | Hazard (Penguin world only) | Mirrored pairs of round holes in open ice (3 pairs on the default 48 board), clear of starting boxes, obstacles and the board edge. Anyone — kings included — whose centre slides 0.25 tiles past the rim falls in: a splash, out of play for 3 seconds, then respawn in their starting box. No points are scored for drowning (not even a king). Strength pushes can shove enemies in. Pickups and teleporters never spawn in or next to water. Logic in `src/holes.ts` + `Game.enter/takeOut`; tuning in `HOLES`; drawing in `drawHoles`/`drawSplashes` in `src/penguin.ts`. |
 | Portals | Offer random escape routes | Off or 2–8 teleporters, four by default. Each entry picks a random unoccupied exit other than the entrance. |
 | Terrain | Offers risky shortcuts | Mirrored patches of quicksand slow movement; ice speeds it up and widens Smooth turns only. Grass and cobblestone are neutral. In Ice movement, terrain changes top speed, so slush drags a sliding penguin down gradually rather than stopping it. |
 
@@ -71,6 +72,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/layout.ts` — procedural obstacle layouts (Castle walls) and terrain patches.
 - `src/icesheet.ts` — Penguin world's open ice-sheet layout and `openTiles`; tests in `src/icesheet.test.ts`. `Game` picks the layout by world unless a fixed layout is passed to its constructor.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
+- `src/holes.ts` — water-hole generation and the fall-in test; tests in `src/holes.test.ts`.
 - `src/gun.ts` — pure golden-gun shot resolution; tests in `src/gun.test.ts`. `src/gunfx.ts` draws tracers and held guns.
 - Death and respawn (`Player.respawnAt`, `Game.respawn`) are shared by anything that can take a player out of play (golden gun now; water holes next). Dead players must be skipped wherever players collide, act, or count.
 - `src/ice.ts` — pure Ice-movement physics (momentum, drift, glide, wall bounce); tests in `src/ice.test.ts`.
@@ -128,6 +130,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — A king who falls into a water hole respawns in their box and nobody scores — Erik asked that falling in means dying and respawning; change `takeOut` callers if drowning a king should give the other team a point.
 - 2026-11-19 — Give Penguin world its own open ice-sheet layout (few chunky icebergs) and default to a 48 board; Castle keeps the dense walls — the owner wants open ice to slide on with bigger walls and units, and the dense layout stays useful for comparison. This relaxes "worlds are visual only" to cover layouts.
 - 2026-11-19 — Golden gun aims where you last moved (no mouse aiming) and kings absorb shots — keeps controls keyboard-only and the capture-the-king goal intact; kings can shield teammates.
 - 2026-11-19 — Make Penguin world with Ice movement the default and keep Castle/Smooth/Classic selectable — the owner wants a slippery penguin game, and the other modes stay useful for playtest comparison.

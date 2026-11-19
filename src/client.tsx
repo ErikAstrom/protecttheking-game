@@ -321,7 +321,8 @@ function App() {
           </span> : <span>Spectating until the match ends</span>}
         </section>
         {player?.respawnAt ? <p className="status out" role="status">
-          You're out! Back in your starting box in {Math.max(1, Math.ceil((player.respawnAt - state.now) / 1000))}s.
+          {player.outCause === 'drowned' ? 'Splash! You fell through the ice.' : "You're out! You were shot."}{' '}
+          Back in your starting box in {Math.max(1, Math.ceil((player.respawnAt - state.now) / 1000))}s.
         </p> : null}
         {result && <p className="status" role="status">
           {result.winner ? `${result.winner === 'red' ? 'Red' : 'Blue'} wins the ${state.phase === 'finished' ? 'match' : 'round'}` : 'Round drawn'}
@@ -347,6 +348,7 @@ function App() {
         <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
+          {penguin && state.holes.length > 0 && <span>Open water: fall in and you're out for 3s</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}

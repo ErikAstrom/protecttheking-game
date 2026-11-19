@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReplayCue } from './audio.ts';
 import { drawHeldGun, drawShots } from './gunfx.ts';
-import { drawIceBlock, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
+import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 
@@ -13,7 +13,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement, world } = board.settings;
@@ -56,6 +56,7 @@ function draw(
   if (penguin) {
     drawIceFloe(ctx, project, size, WIDTH, HEIGHT, time);
     drawPenguinTerrain(ctx, project, board.terrain);
+    drawHoles(ctx, project, board.holes, time);
   } else {
     const [a, b, c, d] = face(-0.5, -0.5, size, size);
     polygon('#0b2228', [d, c, { x: c.x, y: c.y + 21 }, { x: d.x, y: d.y + 21 }]);
@@ -234,6 +235,7 @@ function draw(
   actors.sort((left, right) => left.depth - right.depth);
   for (const actor of actors) actor.draw();
   if (!replay) drawShots(ctx, project, board.shots, scene.now);
+  if (!replay) drawSplashes(ctx, project, board.splashes, scene.now);
   if (replay) {
     for (const [participant, label, color] of [
       [replay.hunterId, 'HUNTER', '#b9fff4'], [replay.kingId, 'CAPTURED KING', '#ffe097'],

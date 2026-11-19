@@ -1,5 +1,6 @@
 // Penguin world visuals: ocean, ice floe, ice blocks and penguins. Drawing only — no game rules here.
-import type { Obstacle, Point, TerrainPatch } from './rules.ts';
+import { HOLES } from './rules.ts';
+import type { Hole, Obstacle, Point, Splash, TerrainPatch } from './rules.ts';
 
 export type Project = (x: number, y: number, z?: number) => Point;
 
@@ -294,5 +295,69 @@ export function drawPenguin(ctx: CanvasRenderingContext2D, look: PenguinLook) {
     ctx.strokeText(label, at.x, y);
     ctx.fillStyle = king ? '#ffe097' : '#ffffff';
     ctx.fillText(label, at.x, y);
+  }
+}
+
+/** Open water holes in the ice: a jagged ice rim showing the sheet's thickness, dark water and slow ripples. */
+export function drawHoles(ctx: CanvasRenderingContext2D, project: Project, holes: readonly Hole[], time: number) {
+  for (const [index, hole] of holes.entries()) {
+    const random = seeded(Math.round(hole.x * 97 + hole.y * 31) + index);
+    const jag = Array.from({ length: 22 }, () => 0.88 + random() * 0.2);
+    const ring = (scale: number, lift = 0) => jag.map((wobble, step) => {
+      const angle = (step / jag.length) * Math.PI * 2;
+      return project(hole.x + Math.cos(angle) * hole.radius * wobble * scale, hole.y + Math.sin(angle) * hole.radius * wobble * scale, lift);
+    });
+    shape(ctx, ring(1.12), '#ffffff', '#cfe8f2', 1.5);
+    shape(ctx, ring(1.0), ICE_EDGE);
+    const water = ring(0.9).map(point => ({ x: point.x, y: point.y + 4 }));
+    const centre = project(hole.x, hole.y);
+    const deep = ctx.createRadialGradient(centre.x, centre.y + 4, 2, centre.x, centre.y + 4, Math.max(8, hole.radius * 16));
+    deep.addColorStop(0, OCEAN_DEEP);
+    deep.addColorStop(1, '#14507a');
+    shape(ctx, water, '#000');
+    ctx.fillStyle = deep;
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = '#6fc3e655';
+    ctx.lineWidth = 1.5;
+    for (let ripple = 0; ripple < 3; ripple++) {
+      const phase = ((time / 1800 + ripple / 3 + index * 0.37) % 1);
+      const p = project(hole.x, hole.y);
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y + 4, hole.radius * 12 * phase + 2, hole.radius * 6 * phase + 1, 0, 0, Math.PI * 2);
+      ctx.globalAlpha = 1 - phase;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/** A short splash where someone fell through the ice. */
+export function drawSplashes(ctx: CanvasRenderingContext2D, project: Project, splashes: readonly Splash[], now: number) {
+  for (const splash of splashes) {
+    const age = Math.max(0, now - splash.at) / HOLES.splashMs;
+    if (age >= 1) continue;
+    const p = project(splash.x, splash.y);
+    ctx.save();
+    ctx.globalAlpha = 1 - age;
+    ctx.strokeStyle = '#e8f8ff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 3, 8 + age * 30, 4 + age * 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let drop = 0; drop < 7; drop++) {
+      const angle = Math.PI + (drop / 6) * Math.PI;
+      const reach = 6 + age * 26;
+      oval(ctx, p.x + Math.cos(angle) * reach, p.y + Math.sin(angle) * reach * 0.9 - age * 10 + age * age * 30, 2.5, 3, '#ffffff');
+    }
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#0b1321';
+    ctx.strokeText('SPLASH!', p.x, p.y - 26 - age * 10);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('SPLASH!', p.x, p.y - 26 - age * 10);
+    ctx.restore();
   }
 }

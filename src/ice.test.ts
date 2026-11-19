@@ -22,6 +22,7 @@ function iceGame() {
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
   game.state.terrain = [];
+  game.state.holes = [];
   const red = game.state.players[2];
   assert.ok(red);
   Object.assign(red, { x: 20, y: 40 });

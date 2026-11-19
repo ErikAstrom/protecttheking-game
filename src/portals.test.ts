@@ -10,6 +10,7 @@ test('followers reroll the exit and never land on an occupied teleporter', conte
   assert.equal(game.start(1000), undefined);
   assert.equal(game.state.portals.length, 4);
   game.state.terrain = [];
+  game.state.holes = [];
   game.state.portals = [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 30, y: 10 }, { x: 40, y: 10 }];
   const [redKing, , runner, follower] = game.state.players;
   assert.ok(redKing && runner && follower);

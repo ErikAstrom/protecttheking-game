@@ -1,7 +1,8 @@
 import { castShot } from './gun.ts';
+import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
-import type { Direction, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
+import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
 
@@ -16,7 +17,7 @@ const homeFacing = (team: Team): Point => team === 'red' ? { x: 1, y: 0 } : { x:
 export class Game {
   readonly state: State = {
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [],
+    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [],
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
@@ -28,10 +29,12 @@ export class Game {
   private blocked = new Set<string>();
   private turn = 0;
   private readonly layout: ((size: number) => Obstacle[]) | undefined;
+  private readonly holeLayout: (size: number, obstacles: Obstacle[]) => Hole[];
 
   /** Without a fixed layout, Penguin world gets an open ice sheet and Castle arena the dense walls. */
-  constructor(layout?: (size: number) => Obstacle[]) {
+  constructor(layout?: (size: number) => Obstacle[], holeLayout: (size: number, obstacles: Obstacle[]) => Hole[] = generateHoles) {
     this.layout = layout;
+    this.holeLayout = holeLayout;
   }
 
   join(id: string, name: string): string | undefined {
@@ -45,7 +48,7 @@ export class Game {
       id, name, team: red <= blue ? 'red' : 'blue', x: 0, y: 0, king: false,
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
       sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
-      facing: homeFacing(red <= blue ? 'red' : 'blue'), gunAmmo: 0, respawnAt: 0, kills: 0, deaths: 0,
+      facing: homeFacing(red <= blue ? 'red' : 'blue'), gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
     });
     this.state.host ??= id;
   }
@@ -96,7 +99,7 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
-      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], result: null, replay: null, notice,
+      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
     this.velocities.clear();
@@ -158,6 +161,7 @@ export class Game {
     }
     this.state.traps = this.state.traps.filter(trap => trap.expires > now);
     this.state.shots = this.state.shots.filter(shot => now - shot.at < GUN.tracerMs);
+    this.state.splashes = this.state.splashes.filter(splash => now - splash.at < HOLES.splashMs);
     for (const player of players) if (player.respawnAt && player.respawnAt <= now) this.respawn(player);
     for (let index = this.respawns.length - 1; index >= 0; index--) {
       if ((this.respawns[index] ?? Infinity) <= now && this.spawnPickup()) this.respawns.splice(index, 1);
@@ -213,7 +217,7 @@ export class Game {
   private clearEffects(player: Player): void {
     Object.assign(player, {
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, gunAmmo: 0, respawnAt: 0, kills: 0, deaths: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
       facing: homeFacing(player.team),
     });
   }
@@ -225,12 +229,14 @@ export class Game {
     state.phase = 'playing';
     state.result = null;
     state.shots = [];
+    state.splashes = [];
     state.replay = null;
     state.notice = null;
     state.now = now;
     state.deadline = now + seconds * 1000;
     state.obstacles = (this.layout ?? (state.settings.world === 'penguin' ? generateIceSheet : generateArena))(size);
     state.terrain = generateTerrain(size);
+    state.holes = state.settings.world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();
     this.velocities.clear();
@@ -298,7 +304,7 @@ export class Game {
 
   private spawnOpen(point: Point): boolean {
     const { settings, pickups, players, portals } = this.state;
-    return !this.isBlocked(point, isFractional(settings.movement)) &&
+    return !this.isBlocked(point, isFractional(settings.movement)) && !inHole(this.state.holes, point, -TUNING.pickupSpacing) &&
       [...pickups, ...players, ...portals]
         .every(other => distance(other, point) >= TUNING.pickupSpacing);
   }
@@ -373,6 +379,7 @@ export class Game {
     const velocity = iceVelocity(last, direction, topSpeed, elapsed);
     const { x, y, portalTrips } = player;
     this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);
+    if (!alive(player)) return true;
     if (player.recoilUntil > now) this.velocities.delete(player.id);
     else if (player.portalTrips !== portalTrips) this.velocities.set(player.id, velocity);
     else {
@@ -388,7 +395,7 @@ export class Game {
     if (!steps) return;
     const step = offset({ x: 0, y: 0 }, delta, 1 / steps);
     const trips = player.portalTrips;
-    for (let index = 0; index < steps && this.state.phase === 'playing'; index++) {
+    for (let index = 0; index < steps && this.state.phase === 'playing' && alive(player); index++) {
       if (step.x && step.y && this.isBlocked(offset(player, step), true)) {
         if (!this.move(player, { x: step.x, y: 0 }, now, true) && this.state.phase === 'playing' && player.recoilUntil <= now) {
           this.move(player, { x: 0, y: step.y }, now, true);
@@ -416,8 +423,14 @@ export class Game {
     const victim = shot.hit && this.state.players.find(candidate => candidate.id === shot.hit?.id);
     if (!victim) return;
     player.kills++;
+    this.takeOut(victim, now, 'shot', GUN.respawnMs);
+  }
+
+  /** Takes a player out of play (shot or drowned) until `respawn` brings them back in their starting box. */
+  private takeOut(victim: Player, now: number, cause: 'shot' | 'drowned', ms: number): void {
     victim.deaths++;
-    victim.respawnAt = now + GUN.respawnMs;
+    victim.respawnAt = now + ms;
+    victim.outCause = cause;
     Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0 });
     this.velocities.delete(victim.id);
   }
@@ -434,7 +447,7 @@ export class Game {
       .find(point => !this.isBlocked(point, smooth) && this.occupants(point, player, smooth).length === 0 &&
         this.state.players.every(other => other === player || !alive(other) || distance(other, point) >= 1));
     Object.assign(player, spot ?? (player.team === 'red' ? { x: 2, y: 2 } : mirror({ x: 2, y: 2 }, size)), {
-      respawnAt: 0, facing: homeFacing(player.team),
+      respawnAt: 0, outCause: null, facing: homeFacing(player.team),
     });
     this.velocities.delete(player.id);
     this.nextMove.delete(player.id);
@@ -472,7 +485,7 @@ export class Game {
         if (this.isBlocked(pushed, smooth) || this.occupants(pushed, defender, smooth).length) break;
         const teleported = this.stepTo(defender, pushed, now, smooth);
         if (smooth) this.nextPush.set(player.id, now + TUNING.smoothPushCooldownMs);
-        if (teleported) break;
+        if (teleported || !alive(defender)) break;
       }
       if (this.occupants(target, player, smooth).length) return this.recoil(player, delta, now, smooth);
     }
@@ -521,6 +534,10 @@ export class Game {
       }
     }
     this.checkTrap(player, now);
+    if (inHole(this.state.holes, player)) {
+      this.state.splashes.push({ x: player.x, y: player.y, at: now });
+      this.takeOut(player, now, 'drowned', HOLES.respawnMs);
+    }
   }
 
   private checkTrap(player: Player, now: number): void {
@@ -535,7 +552,7 @@ export class Game {
   private timeoutWinner(): Team | null {
     if (this.state.settings.timeout === 'draw') return null;
     const count = (team: Team) => {
-      const king = this.state.players.find(player => player.king && player.team !== team);
+      const king = this.state.players.find(player => player.king && player.team !== team && alive(player));
       return king ? this.state.players.filter(player => player.team === team && !player.king && alive(player) &&
         Math.hypot(player.x - king.x, player.y - king.y) <= TUNING.proximityTiles).length : 0;
     };

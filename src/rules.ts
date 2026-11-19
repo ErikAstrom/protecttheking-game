@@ -32,6 +32,10 @@ export const COMMON_ITEMS = ['strength', 'speed', 'slow'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
 export type Trap = Point & { team: Team; expires: number };
+/** A round water hole in the ice sheet (Penguin world). Fall in and you're out until respawn. */
+export type Hole = Point & { radius: number };
+/** A brief splash where someone fell into the water, for drawing. */
+export type Splash = Point & { at: number };
 /** A golden gun shot, kept briefly so clients can draw the tracer. */
 export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range' };
 export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
@@ -100,6 +104,18 @@ export const GUN = {
   /** How long tracers stay in the state for drawing. */
   tracerMs: 350,
 } as const;
+// Water holes in the ice (Penguin world; see src/holes.ts).
+export const HOLES = {
+  /** One mirrored pair of holes per this many tiles of board side (48 → 3 pairs, 64 → 4). */
+  tilesPerPair: 16,
+  minRadius: 1.4, maxRadius: 2.4,
+  /** You fall in once your centre is this far past the rim, so grazing the edge is forgiving. */
+  edgeMargin: 0.25,
+  /** Clearances in tiles from starting boxes, obstacles, the board edge and other holes. */
+  boxClearance: 3, obstacleClearance: 1.6, edgeClearance: 2, spacing: 4,
+  /** Out-of-play time after falling in, and how long the splash is drawn. */
+  respawnMs: 3000, splashMs: 700,
+} as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
@@ -112,6 +128,7 @@ export type Player = Point & {
   gunAmmo: number;
   /** While > 0 the player is dead and respawns at this time. */
   respawnAt: number;
+  outCause: 'shot' | 'drowned' | null;
   kills: number; deaths: number;
 };
 export type Result = { winner: Team | null; reason: 'capture' | 'timeout' };
@@ -127,7 +144,7 @@ export type State = {
   host: string | null; phase: 'lobby' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
-  portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
+  portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; holes: Hole[]; splashes: Splash[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export type ServerMessage =
   | { type: 'hello'; id: string }

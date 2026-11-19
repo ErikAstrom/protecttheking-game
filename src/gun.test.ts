@@ -43,6 +43,7 @@ function match(movement: Movement = 'classic') {
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
   game.state.terrain = [];
+  game.state.holes = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
   Object.assign(red, { x: 20, y: 30, facing: { x: 1, y: 0 }, inventory: ['gun'] });

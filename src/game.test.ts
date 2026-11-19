@@ -10,6 +10,7 @@ function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
   game.state.terrain = [];
+  game.state.holes = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
   return { game, redKing, blueKing, red, blue };
