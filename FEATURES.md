@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Clear team badges
+- **Status:** in progress — Copilot, 2026-11-19 13:32
+- **Requested by:** Playtest feedback
+- **Description:** Make red and blue players easy to tell apart on the full board in both worlds, including kings.
+- **Files:** `src/arena.tsx`, `src/penguin.ts`, `src/client.tsx`, `README.md`, `AGENTS.md`
+- **Notes:** Shared visual marker only; no gameplay or hitbox changes.
+
 ### Golden Gun fanfare and king water loss
 - **Status:** in progress — Copilot, 2026-11-19 13:30
 - **Requested by:** Playtest feedback
