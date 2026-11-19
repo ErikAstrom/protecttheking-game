@@ -410,7 +410,7 @@ function App() {
           <TiltNotice state={state} />
         </div>
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
-          <span>Round R badge: {TEAM_NAMES.red}</span><span>Square B badge: {TEAM_NAMES.blue}</span>
+          <span>{TEAM_NAMES.red}</span><span>{TEAM_NAMES.blue}</span>
           {state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
           {state.settings.world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}

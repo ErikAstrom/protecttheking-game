@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Arena layout and gravity tuning
-- **Status:** in progress — Copilot, 2026-11-19 13:53
-- **Requested by:** Playtest feedback
-- **Description:** Randomize Rooms with wall segments at least five tiles long, add Space walls, strengthen gravity, and remove decorative crosses and player letters.
-- **Files:** `src/rooms.ts`, `src/space.ts`, `src/rules.ts`, `src/game.ts`, `src/arena.tsx`, `src/client.tsx` and focused tests.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -91,6 +85,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Requested by:** Playtest feedback
 - **Description:** Play a rising melody and short beeps on 3–2–1, then a higher, longer beep with the GO fanfare. Plays for players and the live viewer when sound is enabled.
 - **Notes:** Implemented in `Add countdown music and start beeps`.
+
+### Arena layout and gravity tuning
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Randomize Rooms with wall segments at least five tiles long, add Space walls, strengthen gravity, and remove decorative crosses and player letters.
+- **Notes:** Completed in `Randomize arena outlines and tune Space gravity`. All maps now roll both corner cuts independently.
 
 ### Space map with a black hole
 - **Status:** done — 2026-11-19

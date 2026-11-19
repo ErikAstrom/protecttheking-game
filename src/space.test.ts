@@ -4,9 +4,10 @@ import { Game } from './game.ts';
 import { DEFAULT_SETTINGS, SPACE, TUNING } from './rules.ts';
 import type { Movement } from './rules.ts';
 import { startActiveRound } from './test-round.ts';
+import { gravityStep } from './space.ts';
 
 function setup(movement: Movement, world: 'space' | 'rooms' = 'space') {
-  const game = new Game();
+  const game = new Game(() => []);
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, world, movement, teamSize: 2, pickupCount: 0, portalCount: 0 }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   startActiveRound(game, 1000);
@@ -50,6 +51,26 @@ test('a player can steer against the pull and leave the field', () => {
   for (let time = now + TUNING.tickMs; time <= now + 2500; time += TUNING.tickMs) game.tick(time);
   assert.equal(game.state.blackHole, hole);
   assert.ok(king.x < hole.x - SPACE.radius);
+});
+
+test('Space adds solid bulkheads and gravity moves a nearby idle player more than three tiles per second', () => {
+  const game = new Game();
+  assert.equal(game.configure({ ...DEFAULT_SETTINGS, world: 'space', movement: 'classic', teamSize: 2, portalCount: 0 }), undefined);
+  for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
+  startActiveRound(game, 1000);
+  const [player] = game.state.players;
+  const [wall] = game.state.obstacles;
+  assert.ok(player && wall && game.state.obstacles.length >= 15);
+  Object.assign(player, { x: wall.x, y: wall.y - 1 });
+  game.input(player.id, 'down');
+  game.tick(1025);
+  assert.equal(player.y, wall.y - 1);
+  let position = { x: 4, y: 0 };
+  for (let now = 0; now < 1000; now += TUNING.tickMs) {
+    const delta = gravityStep({ x: 0, y: 0 }, position, TUNING.tickMs);
+    position = { x: position.x + delta.x, y: 0 };
+  }
+  assert.ok(position.x < 1);
 });
 
 test('the gravity hazard stays off other maps', () => {

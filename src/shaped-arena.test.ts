@@ -3,7 +3,7 @@ import test from 'node:test';
 import { boardOutline, onBoard } from './board-shape.ts';
 import { Game } from './game.ts';
 import { generateTerrain, mirror } from './layout.ts';
-import { DEFAULT_SETTINGS, DIRECTIONS, TUNING, readSettings, scheduleTilt, surfaceAt, tiltAmount } from './rules.ts';
+import { DEFAULT_SETTINGS, DIRECTIONS, TUNING, WORLDS, readSettings, scheduleTilt, surfaceAt, tiltAmount } from './rules.ts';
 import { startActiveRound } from './test-round.ts';
 import type { Direction, Movement, Point, World } from './rules.ts';
 
@@ -17,7 +17,7 @@ function gameFor(world: World, movement: Movement) {
   return game;
 }
 
-for (const world of ['penguin', 'arena'] as const) {
+for (const world of WORLDS) {
   test(`${world} cuts the unused corners and blocks movement there`, () => {
     const game = gameFor(world, 'classic');
     const { size } = game.state.settings;
@@ -39,19 +39,20 @@ for (const world of ['penguin', 'arena'] as const) {
   });
 }
 
-test('a new round publishes a new mirrored boundary without removing spawns', t => {
+test('a new round rolls the two unused corners independently without removing spawns', t => {
   const random = t.mock.method(Math, 'random', () => 0.2);
   const game = gameFor('penguin', 'classic');
   const first = game.state.outline;
   assert.deepEqual(first, boardOutline(DEFAULT_SETTINGS.size, 'penguin', 0.2));
   game.tick(game.state.deadline);
-  random.mock.mockImplementation(() => 0.8);
+  let calls = 0;
+  random.mock.mockImplementation(() => calls++ === 0 ? 0.8 : 0.2);
   assert.equal(game.next(game.state.now + 1), undefined);
   const second = game.state.outline;
   assert.ok(second);
   assert.notDeepEqual(first, second);
   const mid = second.length / 2;
-  assert.deepEqual(second.slice(mid), second.slice(0, mid).map(point => mirror(point, DEFAULT_SETTINGS.size)));
+  assert.notDeepEqual(second.slice(mid), second.slice(0, mid).map(point => mirror(point, DEFAULT_SETTINGS.size)));
   assert.ok(game.state.players.every(player => onBoard(second, player, TUNING.smoothRadius)));
 });
 

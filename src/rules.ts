@@ -168,7 +168,7 @@ export const HOLES = {
 } as const;
 export const SPACE = {
   minDelayMs: 4000, maxDelayMs: 8000, durationMs: 6500,
-  radius: 9, coreRadius: 1, maxPullPerMs: 0.0035,
+  radius: 9, coreRadius: 1, maxPullPerMs: 0.006,
   spawnInset: 0.25, spawnAttempts: 16,
 } as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };

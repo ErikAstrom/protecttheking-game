@@ -31,9 +31,9 @@ Agents are free — and expected — to edit this file as the project develops.
 ## 2. Game design
 
 ### Core loop
-Rooms & Corridors is a separate selectable map. Long symmetric partitions create rooms with wide doorways and multiple routes; there are no scattered obstacles or terrain patches.
+Rooms & Corridors is a separate selectable map. Randomized partitions create connected rooms with doorways and wall segments at least five tiles long; there are no scattered obstacles or terrain patches.
 
-Space arena is an open deck with a starfield. During play a black hole spawns randomly in the central area, lasts 6.5 seconds, then waits 4–8 seconds before spawning again. Its visible field pulls nearby players even while idle, but players can steer out and nobody is eliminated by the hole itself. Other maps do not get this hazard.
+Space arena is a starfield deck with three staggered bulkheads. During play a black hole spawns randomly in the central area, lasts 6.5 seconds, then waits 4–8 seconds before spawning again. Its visible field pulls nearby players even while idle, but players can steer out and nobody is eliminated by the hole itself. Other maps do not get this hazard.
 
 Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Each round generates a rotationally symmetric layout, leaving clear spawns and connecting lanes. Castle arena uses dense bent stone walls, crates, and pillars (`generateArena`). Penguin world uses an open ice sheet (`generateIceSheet` in `src/icesheet.ts`): a few chunky mirrored icebergs (3–5 tiles a side, about one pair per 16 tiles of board side, so 3 pairs on the default 48 board) with at least 5 tiles of open ice between them, a 3-tile lap lane along the floe edge and 3 tiles clear around each 7×5 spawn box, leaving ~80% of the board two or more tiles from any ice. Tuning in `ICE_SHEET`; `openTiles(size, obstacles, clearance)` lists open ice for features that need empty space (e.g. water holes). All obstacles are solid in both movement modes. Opening pickups form randomized mirrored pairs (with one extra if the count is odd). Collected pickups return independently in random open positions after 2.5–6.5 seconds. In Penguin world the board is drawn as an ice floe: walls are ice blocks (plain tops, so an iceberg's blocks merge into one slab), crates are snow-capped blocks, pillars are ice spires, ice terrain is black ice and quicksand is slush.
 
@@ -57,7 +57,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 ### Controls
 WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractional world coordinates, normalized diagonals, speed-dependent turn inertia, and circular unit collisions with no chain pushes. Releasing movement plants the player. **Ice** (the default) uses Smooth's fractional coordinates and collisions but adds momentum: holding a direction accelerates to top speed over about half a second, sideways momentum fades slowly after a turn (drift), reversing skids through zero, releasing keys glides to a stop over a couple of seconds, and sliding into a wall bounces back slightly. Physics live in `src/ice.ts` and tuning in `ICE` in `src/rules.ts`. On a blocked unit collision, only the mover recoils. Capture and successful strength pushes take priority. Space activates the held item, fires a shot if holding the Golden Gun, or triggers the king's sprint.
 
-Penguin World and Castle Arena randomize the cuts at the two corners without starting boxes each round. Rooms & Corridors and Space keep square outlines. The host publishes the shared outline for collision, spawning, bot navigation, and drawing. Mirrored terrain outlines are used for both rendering and gameplay. In every arena, tilt has a configurable chance (default 50%) and duration (default 20 seconds). The server skips tilt if the full event cannot fit. The visual tilt and directional speed effect ease in and out together without adding idle drift. In Space, black-hole gravity works independently and can overlap with tilt.
+Every world randomizes the two corner cuts independently each round, keeping both starting boxes clear. The host publishes the shared outline for collision, spawning, bot navigation, and drawing. Mirrored terrain outlines are used for both rendering and gameplay. In every arena, tilt has a configurable chance (default 50%) and duration (default 20 seconds). The server skips tilt if the full event cannot fit. The visual tilt and directional speed effect ease in and out together without adding idle drift. In Space, black-hole gravity works independently and can overlap with tilt.
 
 ### Progression & difficulty
 Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world (Penguin world or Castle arena), and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
@@ -90,7 +90,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/server.ts` — HTTP host and WebSocket command handling.
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
 - `src/arena.tsx`, `src/audio.ts` — tilted board and procedural music and sound effects.
-- Both worlds use the same team badges in live play, `/watch`, and replays: round red **R**, square blue **B**. The white ring still identifies your own character.
+- Team colors and animal silhouettes identify players in live play, `/watch`, and replays; the white ring still identifies your own character.
 - `src/penguin.ts` — Penguin world drawing (ocean, ice floe, ice blocks, penguins), called from `arena.tsx`.
 
 ## 5. Coding conventions
@@ -142,6 +142,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Randomize both unused corner cuts independently on every map and vary room partitions each round without shortening walls below five tiles.
 - 2026-11-19 — Give Space arena an escapable, temporary black hole so gravity changes chase routes without becoming a new way to lose a round.
 - 2026-11-19 — Add Rooms & Corridors as a separate map — keep the other layouts while offering predictable doorways and team chokepoints.
 - 2026-11-19 — A king falling into water now awards the opposing team one point and ends the round instead of allowing a respawn, so kings can't use water as an escape.

@@ -1,29 +1,38 @@
 import type { Obstacle } from './rules.ts';
 
-const DOOR_HALF_WIDTH = 1.5;
+const MIN_WALL = 5;
+const DOOR_WIDTH = 3;
+const MIN_ROOM_WIDTH = 4;
 
-export function generateRooms(size: number): Obstacle[] {
-  const outer = Math.floor(size / 4);
-  const middle = Math.floor((size - 1) / 2);
-  const dividers = new Set([outer, middle, size - 1 - middle, size - 1 - outer]);
-  const doors = new Set<number>();
-  const boundaries = [-1, ...dividers, size];
-  for (let index = 1; index < boundaries.length; index++) {
-    const first = boundaries[index - 1]! + 1;
-    const last = boundaries[index]! - 1;
-    const center = (first + last) / 2;
-    for (let tile = first; tile <= last; tile++) {
-      if (Math.abs(tile - center) <= DOOR_HALF_WIDTH) doors.add(tile);
-    }
-  }
-
+export function generateRooms(size: number, random = Math.random): Obstacle[] {
   const walls: Obstacle[] = [];
-  for (const divider of dividers) {
-    for (let tile = 0; tile < size; tile++) {
-      if (doors.has(tile)) continue;
-      walls.push({ x: divider, y: tile, kind: 'wall' });
-      if (!dividers.has(tile)) walls.push({ x: tile, y: divider, kind: 'wall' });
+  const inset = Math.ceil(size * 0.18) + 1;
+  const pick = (min: number, max: number) => min + Math.floor(random() * (max - min + 1));
+
+  function partition(left: number, top: number, width: number, height: number, depth: number) {
+    const minSpan = 2 * MIN_WALL + DOOR_WIDTH;
+    const minSplit = 2 * MIN_ROOM_WIDTH + 1;
+    const canSplitX = height >= minSpan && width >= minSplit;
+    const canSplitY = width >= minSpan && height >= minSplit;
+    if (!depth || (!canSplitX && !canSplitY)) return;
+    const vertical = canSplitX && (!canSplitY || random() < 0.5);
+    const span = vertical ? height : width;
+    const across = vertical ? width : height;
+    const at = pick(MIN_ROOM_WIDTH, across - MIN_ROOM_WIDTH - 1);
+    const door = pick(MIN_WALL, span - MIN_WALL - DOOR_WIDTH);
+    for (let along = 0; along < span; along++) {
+      if (along >= door && along < door + DOOR_WIDTH) continue;
+      walls.push({ x: left + (vertical ? at : along), y: top + (vertical ? along : at), kind: 'wall' });
+    }
+
+    if (vertical) {
+      partition(left, top, at, height, depth - 1);
+      partition(left + at + 1, top, width - at - 1, height, depth - 1);
+    } else {
+      partition(left, top, width, at, depth - 1);
+      partition(left, top + at + 1, width, height - at - 1, depth - 1);
     }
   }
+  partition(inset, inset, size - 2 * inset, size - 2 * inset, size >= 48 ? 3 : 2);
   return walls;
 }

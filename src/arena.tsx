@@ -6,7 +6,7 @@ import { drawBlackHole, drawStars } from './space-art.ts';
 import { drawOrca } from './orca.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from './rules.ts';
-import type { CaptureReplay, ItemKind, Point, ReplayFrame, State, Team } from './rules.ts';
+import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -60,19 +60,6 @@ function draw(
     ctx.fillStyle = fill;
     ctx.fillText(label, x, y);
   }
-  function teamBadge(team: Team, x: number, y: number, r: number) {
-    const radius = Math.max(9, r * 0.74);
-    ctx.beginPath();
-    if (team === 'red') ctx.arc(x, y, radius, 0, Math.PI * 2);
-    else ctx.roundRect(x - radius, y - radius, radius * 2, radius * 2, 2);
-    ctx.fillStyle = COLORS[team];
-    ctx.fill();
-    ctx.strokeStyle = '#0b1321';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    text(team === 'red' ? 'R' : 'B', x, y, radius * 1.48, '#0b1321');
-  }
-
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   if (space) drawStars(ctx, WIDTH, HEIGHT);
   const outline = (board.outline ?? boardOutline(size, world)).map(({ x, y }) => project(x, y));
@@ -99,17 +86,6 @@ function draw(
     ctx.stroke();
     ctx.save();
     ctx.clip();
-    const laneWidth = 2;
-    const middle = (size - laneWidth - 1) / 2;
-    const cobble = space ? '#8b7ee94a' : '#78898469';
-    polygon(cobble, face(-0.5, middle, size, laneWidth));
-    polygon(cobble, face(middle, -0.5, laneWidth, size / 2 - laneWidth / 2));
-    polygon(cobble, face(middle, middle + laneWidth, laneWidth, size / 2 - laneWidth / 2));
-    const cobbleStride = Math.max(2, Math.floor(size / 32));
-    for (let i = 0; i < size - cobbleStride; i += cobbleStride) {
-      polygon('#b5beb047', face(i, middle + 0.3, cobbleStride * 0.65, 0.48));
-      polygon('#b5beb047', face(middle + 0.86, i, 0.48, cobbleStride * 0.65));
-    }
     for (const patch of board.terrain) {
       const { x, y, width, height, kind } = patch;
       const ice = kind === 'ice';
@@ -229,7 +205,6 @@ function draw(
       const orca = player.team === 'blue';
       const drawAnimal = orca ? drawOrca : drawPenguin;
       drawAnimal(ctx, { at: p, r, team, king: player.king, you: player.id === id, motion, time });
-      teamBadge(player.team, p.x, p.y - r * (orca ? 0.22 : 0.65), r);
     } });
   }
   actors.sort((left, right) => left.depth - right.depth);

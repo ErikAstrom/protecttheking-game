@@ -22,14 +22,14 @@ For uneven teams, set **Balance teams with bots** to **On** and choose **Apply s
 
 ## Play
 
-Choose **Rooms & Corridors** in the lobby for long walls, connected rooms, and wide doorways instead of scattered obstacles.
-Choose **Space arena** for an open starfield deck with a temporary black hole. Its purple ring marks the pull range. Steer away to escape; the hole itself never eliminates players.
+Choose **Rooms & Corridors** for a fresh arrangement of connected rooms and wall segments at least five tiles long each round.
+Choose **Space arena** for a starfield deck with staggered walls and a temporary black hole. Its purple ring marks the pull range. Steer away to escape; the hole itself never eliminates players. All maps have independently randomized corner cuts each round.
 
 - Penguin World has a faceted ice floe, and Castle Arena has clipped corners. The outline, obstacles, and irregular ice and quicksand patches are randomized each round; starting areas stay intact.
 - By default, eligible rounds have a **50% chance** of a **20-second tilt**. Hosts can change **Tilt chance (%)** and **Tilt duration (seconds)** in Match settings; 0% disables tilt. Rounds without time for the full event skip it. The board eases into and out of the tilt, with faster movement downhill and slower movement uphill. It adds no drift to idle players. Turn on sound to hear the ominous tilt cue.
 - Each round starts with **3, 2, 1, GO!** on player screens and the live viewer. Movement and items unlock at **GO!**, when the full round timer starts.
 - Move with **WASD** or the arrow keys. On **Ice**, you build up speed as you run, drift when you turn, skid when you reverse, and keep gliding after you let go, so plan your stops. In Smooth and Ice, hold two directions to move diagonally. Turns carry momentum, so speed boosts make you slide farther; release the keys to hold your position. The **Red Penguins** and **Blue Orcas** look different in every world but use the same controls and hitboxes. Look for gold crowns on kings and a white ring around your own character.
-- Every player, including the kings, wears a **round red R** or a **square blue B** badge. Bumping another player makes the mover recoil up to one tile or world unit while the blocker holds their ground. Successful strength pushes still shove the blocker instead. Contact between a king and an opposing non-king captures the king immediately.
+- Team colors distinguish **Red Penguins** from **Blue Orcas**. Bumping another player makes the mover recoil up to one tile or world unit while the blocker holds their ground. Successful strength pushes still shove the blocker instead. Contact between a king and an opposing non-king captures the king immediately.
 - Kings can't collect pickups, but **Space** triggers a built-in four-second sprint. It starts ready each round and recharges ten seconds after the boost's scheduled end.
 - Set **Teleporters** to Off or 2–8 (four by default). Locations change each round. Each entry sends you to a randomly chosen unoccupied teleporter other than the one you entered. If all exits are occupied, you stay put. Step off and back on to roll again.
 - While Strength is active, your character looks 25% larger. Your collision size stays the same.
@@ -42,7 +42,7 @@ Choose **Space arena** for an open starfield deck with a temporary black hole. I
 - When time expires, either nobody scores (**Draw**) or the team with more non-kings within five tiles of the opposing king earns a point (**Proximity**). Equal counts are a draw.
 - Captures replay the last three seconds at ¾ speed, highlighting the hunter, king, and contact point. With sound enabled, a rewind cue marks the start and an impact cue marks contact. Use **Skip replay** or **Watch replay** before the host advances. Replays don't autoplay if your device requests reduced motion. Timeouts don't produce a replay.
 - The lobby host starts each round on a new mirrored layout with stone walls, crates, and pillars. Corners stay open for both teams and lanes give players ways around the obstacles. Opening pickups are mirrored in pairs; respawns are independent. A player disconnect returns the match to the lobby.
-- **Quicksand** slows movement. **Ice** is faster in both modes and makes turns wider in Smooth; Classic never adds a slide step. Grass and cobblestone are neutral.
+- **Quicksand** slows movement. **Ice** is faster in both modes and makes turns wider in Smooth; Classic never adds a slide step.
 
 `npm test` runs the game-rule tests. Re-run `npm run build` and restart the host after changes.
 ## Contributing

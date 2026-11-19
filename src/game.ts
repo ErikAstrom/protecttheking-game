@@ -8,7 +8,7 @@ import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, R
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
 import { generateRooms } from './rooms.ts';
-import { gravityStep } from './space.ts';
+import { generateSpaceWalls, gravityStep } from './space.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -344,10 +344,10 @@ export class Game {
     state.notice = null;
     state.now = now;
     state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
-    const layout = world === 'space' ? () => [] : world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
-    this.outline = state.outline = boardOutline(size, world, Math.random());
+    const layout = world === 'space' ? generateSpaceWalls : world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
+    this.outline = state.outline = boardOutline(size, world, Math.random(), Math.random());
     state.obstacles = (this.layout ?? layout)(size)
-      .filter(obstacle => world === 'rooms' || world === 'space' || onBoard(this.outline, obstacle, Math.SQRT1_2));
+      .filter(obstacle => onBoard(this.outline, obstacle, Math.SQRT1_2));
     state.terrain = world === 'rooms' || world === 'space' ? [] : generateTerrain(size);
     state.blackHole = null;
     this.gravityProgress.clear();
