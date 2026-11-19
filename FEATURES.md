@@ -53,6 +53,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:**
   - 2026-11-19 — Plan: shots go in the direction you last moved, stop at obstacles, pass through teammates, and are blocked (harmlessly) by kings. Rare: only appears on respawns, at a small chance, with at most one on the board.
 
+### Random-exit teleporters and larger characters
+- **Status:** in progress — Copilot, 2026-11-19 13:06
+- **Requested by:** Playtest feedback
+- **Description:** Show characters 25% larger and default to four teleporters with random exits.
+- **Files:** `src/rules.ts`, `src/game.ts`, `src/arena.tsx`, `src/client.tsx`, portal test fixtures and a focused portal test file.
+
 ## Open
 
 _No open items._
