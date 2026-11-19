@@ -1,9 +1,20 @@
 # Protect the King — Agent Spec
 
 This is the main spec for AI coding agents (Claude, Codex, Copilot, Cursor, etc.) working in this repo.
-**Read this file fully before writing code.** If the code and this spec disagree, ask a human — don't guess.
+**Read this file fully before writing code.**
 
-> Status: early draft. Sections marked `TBD` still need decisions from the project owner.
+> Status: early draft, and a **living document**. Sections marked `TBD` are simply not decided yet — they are not blockers.
+
+## 0. This spec is yours to evolve
+
+Agents are free — and expected — to edit this file as the project develops.
+
+- **`TBD` means "open", not "forbidden".** If a task needs a decision that isn't made yet, make a sensible choice, implement it, and write it into the relevant section here (replacing the `TBD`).
+- **Keep the spec and the code in sync.** When you add a system, change the structure, pick a library, or add run/test commands, update this file in the same change.
+- **Record notable decisions** with a one-line reason in the Decision log (section 9) so later agents understand why.
+- **Don't silently reverse** a decision that's already written down. If you think one is wrong, change it deliberately and note why in the Decision log.
+- **Several agents and people work here at once.** Pull the latest changes before editing, keep edits to the sections you touched, and don't overwrite other people's additions.
+- Only ask a human when a choice is genuinely hard to undo (e.g. switching engine/language, deleting major features) or when the spec and the code contradict each other in a way you can't resolve.
 
 ---
 
@@ -64,7 +75,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 2. Make the smallest change that solves the task. No drive-by refactors.
 3. Run the game and any tests before calling a task done. Commands: `TBD`.
 4. Never commit secrets, API keys, or large binary assets without approval.
-5. If you make a design decision that isn't covered here, add it to this file (or list it under Open questions) in the same change.
+5. If you make a design decision that isn't covered here, write it into this file in the same change (see section 0).
 6. Commit messages: short imperative summary line, e.g. `Add enemy spawn timer`.
 
 ## 7. Definition of done
@@ -79,3 +90,11 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - What does the King do — stationary, or does it move?
 - Single player only, or multiplayer?
 - Art style and asset sources?
+
+Agents: resolve these as the work requires, move the answer into the right section, and remove the question here.
+
+## 9. Decision log
+
+Newest first. One line each: date — decision — why.
+
+- 2026-11-19 — This spec is a living document that agents may edit — so work isn't blocked on undecided `TBD`s.
