@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Choose available power-ups
+- **Status:** in progress — Claude (Erik's session), 2026-11-19 16:20
+- **Requested by:** Erik
+- **Description:** Lobby checkboxes for which power-ups can appear in a match (Strength, Speed, Slow trap, Vault, Sword, Golden gun). Only checked ones spawn.
+- **Files:** `src/rules.ts` (Settings.items, defaults, readSettings), `src/game.ts` (pickup spawning), `src/client.tsx` (lobby checkboxes), new `src/items-setting.test.ts`.
+- **Notes:**
+
 ## Open
 
 ### Wire golden gun and splash sounds
