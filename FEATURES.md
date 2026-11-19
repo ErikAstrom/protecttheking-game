@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Smart bots for uneven teams
+- **Status:** in progress — Copilot, 2026-11-19 13:19
+- **Requested by:** Playtest feedback
+- **Description:** Give hosts an option to add bots to the smaller team without moving humans. Keep kings human and have bots guard or hunt using the normal game rules.
+- **Files:** new `src/bots.ts`, `src/bots.test.ts`; small hooks in `src/rules.ts`, `src/game.ts`, `src/client.tsx`; docs.
+- **Notes:** With balancing enabled, one human per team is enough to start. Keep AI in a separate module and reuse the existing movement and item methods without changing collision or pickup logic.
+
 ### Visible size boost for Strength
 - **Status:** in progress — Copilot, 2026-11-19 13:15
 - **Requested by:** Playtest feedback
