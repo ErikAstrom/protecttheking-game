@@ -56,6 +56,23 @@ test('a grounded hunter cannot tag a king above the ledge', () => {
   assert.deepEqual(game.state.result, { winner: 'red', reason: 'capture' });
 });
 
+test('the corridor stairs connect to the upper walkway and let a player drop into a floor lane', () => {
+  const { game, red, move } = setup('classic');
+  const { walkway } = game.state;
+  assert.ok(walkway?.branch);
+  const { x, y, width, depth } = walkway.branch;
+  Object.assign(red, { x: x + Math.floor(width / 2), y: y + depth });
+  move('up', 2500, () => red.y === y - 1);
+  assert.equal(red.y, y - 1, 'the branch joins the original walkway without a gap');
+  assert.equal(levelAt(walkway, red), WALKWAY.stairs + 1);
+  move('down', 750, () => red.y === y + 3);
+  assert.equal(red.y, y + 3);
+  move('left', 450, () => levelAt(walkway, red) === 0);
+  assert.equal(red.x, x - 1);
+  assert.equal(red.drop?.from, WALKWAY.stairs + 1);
+  assert.equal(red.drop.to, 0);
+});
+
 test('other worlds do not have a walkway', () => {
   assert.equal(setup('classic', 'arena').game.state.walkway, undefined);
 });

@@ -51,12 +51,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Add climbable icebergs, rubble mounds, directional conveyors, and Space boost lanes.
 - **Files:** `src/game.ts`, `src/rules.ts`, `src/arena.tsx`, and dedicated terrain modules (no changes to Rooms wall generation).
 
-### Denser Rooms & Corridors layouts
-- **Status:** in progress — Copilot, 2026-11-19 14:08
-- **Requested by:** Playtest feedback
-- **Description:** Add more randomized rooms and distinct corridors while keeping the raised walkway and clear routes.
-- **Files:** `src/rooms.ts`, Rooms and walkway tests, gameplay docs.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -91,6 +85,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Denser Rooms & Corridors layouts
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Add more randomized rooms, distinct corridors, and connected raised routes.
+- **Notes:** Implemented in `Add denser Rooms and Corridors layouts`. The standard board now has eight two-exit rooms, corridors at least three tiles wide, and a connected upper route with a third staircase near mid-map.
 
 ### Stronger and more frequent Space hazards
 - **Status:** done — 2026-11-19

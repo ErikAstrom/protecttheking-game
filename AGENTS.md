@@ -31,8 +31,8 @@ Agents are free — and expected — to edit this file as the project develops.
 ## 2. Game design
 
 ### Core loop
-Rooms & Corridors is a separate selectable map. Randomized partitions create connected rooms with doorways and wall segments at least five tiles long; there are no scattered obstacles or terrain patches.
-Its raised walkway has stairs at both ends and safe drops off the sides. The deck is solid underneath; you cannot climb a ledge from the floor. Bots use the same height transitions. Pickups and teleporters spawn on the floor, and shots stay on the tier where they fire.
+Rooms & Corridors is a separate selectable map. The standard 48×48 board has eight walled rooms, each with two three-tile doorways opening onto corridors at least three tiles wide. Room count scales with board size, and room dimensions, positions, and doorways randomize where space allows. Wall segments are at least five tiles long; there are no scattered obstacles or terrain patches.
+Its raised walkway has stair entrances at both ends and safe drops off the sides. On boards at least 48 tiles across, a connected elevated branch runs down the central corridor to a third entrance near mid-map, with floor lanes on both sides. The deck is solid underneath; you cannot climb a ledge from the floor. Bots use the same height transitions. Pickups and teleporters spawn on the floor, and shots stay on the tier where they fire.
 
 Space arena is a starfield deck with three staggered bulkheads. During play a black hole spawns randomly in the central area after 2–4 seconds, lasts 6.5 seconds, then waits 2–4 seconds before spawning again. Its visible field pulls nearby players even while idle, but players can steer out and nobody is eliminated by the hole itself. Other maps do not get this hazard.
 
@@ -144,6 +144,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Replace sparse Rooms partitions with two-exit rooms and dedicated corridors, and connect the raised walkway to a third staircase near mid-map so players can switch between upper and lower chase routes.
 - 2026-11-19 — Make Space hazards more frequent: multiply tilt odds by 1.6 (capped at 100%, still off at 0%), boost visual and movement tilt by 50%, and halve black-hole delays.
 - 2026-11-19 — Prototype elevation on Rooms & Corridors using a solid deck with stairs and walk-off drops, without adding a jump key or stacked floors.
 - 2026-11-19 — Randomize both unused corner cuts independently on every map and vary room partitions each round without shortening walls below five tiles.

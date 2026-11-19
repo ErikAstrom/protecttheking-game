@@ -7,7 +7,7 @@ import { drawOrca } from './orca.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
-import { levelAt, WALKWAY } from './walkway.ts';
+import { levelAt, stairAxisAt, WALKWAY } from './walkway.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -147,30 +147,32 @@ function draw(
   }
   const actors: { depth: number; draw: () => void }[] = [];
   if (walkway) {
-    const left = walkway.x - 0.5;
-    const top = walkway.y - 0.5;
-    const front = top + walkway.depth;
-    actors.push({ depth: front, draw: () => {
-      for (let column = 0; column < walkway.width; column++) {
-        const x = left + column;
-        const tier = levelAt(walkway, { x: walkway.x + column, y: walkway.y });
-        const z = tier * tierHeight;
-        const stairs = tier <= WALKWAY.stairs;
-        polygon('#30404e', [project(x, front, z), project(x + 1, front, z), project(x + 1, front), project(x, front)]);
-        polygon(stairs ? '#83969b' : '#596d7d', face(x, top, 1, walkway.depth, z));
-        if (stairs) {
-          polygon('#e6c480', face(x + 0.08, top, 0.12, walkway.depth, z));
-          polygon('#e6c480', face(x + 0.8, top, 0.12, walkway.depth, z));
-        } else {
-          polygon('#9ab7bf', face(x, front - 0.14, 1, 0.14, z));
-        }
+    for (const section of walkway.branch ? [walkway, walkway.branch] : [walkway]) {
+      for (let row = section.y; row < section.y + section.depth; row++) {
+        actors.push({ depth: row + 0.5, draw: () => {
+          for (let column = section.x; column < section.x + section.width; column++) {
+            const x = column - 0.5, y = row - 0.5, front = row + 0.5;
+            const point = { x: column, y: row };
+            const z = levelAt(walkway, point) * tierHeight;
+            const below = levelAt(walkway, { x: column, y: row + 1 }) * tierHeight;
+            const stairs = stairAxisAt(walkway, point);
+            if (below < z) polygon('#30404e', [project(x, front, z), project(x + 1, front, z),
+              project(x + 1, front, below), project(x, front, below)]);
+            polygon(stairs ? '#83969b' : '#596d7d', face(x, y, 1, 1, z));
+            for (const offset of [0.08, 0.8]) {
+              if (stairs === 'x') polygon('#e6c480', face(x + offset, y, 0.12, 1, z));
+              if (stairs === 'y') polygon('#e6c480', face(x, y + offset, 1, 0.12, z));
+            }
+            if (!stairs && below === 0) polygon('#9ab7bf', face(x, front - 0.14, 1, 0.14, z));
+          }
+        } });
       }
-    } });
+    }
   }
   for (const trap of scene.traps) {
     const tier = levelAt(walkway, trap);
     if (!tier || !walkway) continue;
-    actors.push({ depth: walkway.y + walkway.depth + 0.001, draw: () => {
+    actors.push({ depth: Math.round(trap.y) + 0.501, draw: () => {
       const p = project(trap.x, trap.y, tier * tierHeight);
       ellipse(p.x, p.y, Math.max(9, scale * 0.68), Math.max(5, scale * 0.4), '#a25be36c', COLORS[trap.team]);
       text(GLYPHS.slow, p.x, p.y, 12, '#fff');
@@ -219,7 +221,7 @@ function draw(
     const drop = player.drop;
     const progress = drop ? Math.max(0, Math.min(1, (drawAt - drop.at) / WALKWAY.dropMs)) : 1;
     const z = tierHeight * (drop && level === drop.to ? drop.to + (drop.from - drop.to) * (1 - progress ** 2) : level);
-    const depth = walkway && z > 0 ? walkway.y + walkway.depth + y * 0.0001 : y;
+    const depth = z > 0 ? Math.round(y) + 0.502 + y * 0.000001 : y;
     // Movement per server tick in tiles, for penguin facing, leaning and spray.
     const per = replay ? TUNING.tickMs / REPLAY.sampleMs : -1;
     const motion = player.portalTrips === target.portalTrips
