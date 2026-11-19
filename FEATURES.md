@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Shaped arenas, natural terrain, and sudden tilt
+- **Status:** in progress — Copilot, 2026-11-19 13:34
+- **Requested by:** Playtest feedback
+- **Description:** Give both worlds non-square boundaries and irregular terrain. Add a brief, synchronized tilt that favors downhill movement without moving idle players, with an opt-in ominous musical cue.
+- **Files:** Arena layout and rendering, terrain rules, movement, bot navigation, and audio.
+
 ### Clear team badges
 - **Status:** in progress — Copilot, 2026-11-19 13:32
 - **Requested by:** Playtest feedback
