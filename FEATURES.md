@@ -61,6 +61,30 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:**
 - **Notes:**
 
+### HTTPS and secure WebSockets
+- **Status:** open
+- **Requested by:** Playtest feedback
+- **Description:** Document how to host the game over HTTPS with a certificate trusted by players' phones, and support secure WebSockets (`wss://`) for gameplay and the viewer.
+- **Notes:** LAN hosting should not require cloud deployment. Configure allowed HTTPS origins explicitly.
+
+### Mobile controller page
+- **Status:** open
+- **Requested by:** Playtest feedback
+- **Description:** Add a phone-friendly page for joining as a player and controlling movement and item use without rendering the arena. Use `/watch` as the shared big-screen display.
+- **Notes:** Include a touch D-pad for movement and an action button for items and king sprint.
+
+### Gyro and tilt controls
+- **Status:** open
+- **Requested by:** Playtest feedback
+- **Description:** Let players steer by tilting their phones using browser device-orientation events, without installing a native app.
+- **Notes:** Builds on the mobile controller page and trusted HTTPS. Include tap-to-enable sensor permission where required, neutral-position calibration, and a touch fallback if sensors are unavailable or permission is denied.
+
+### Lobby access control
+- **Status:** open
+- **Requested by:** Playtest feedback
+- **Description:** Let hosts make a lobby private. Players join with a display name and temporary room code instead of creating an account; host controls require a separate host session.
+- **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
+
 ## Done
 
 ### Smart bots for uneven teams
