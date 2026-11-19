@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Crown Bluff
+- **Status:** in progress — Copilot, 2026-11-19 14:31
+- **Requested by:** Playtest feedback
+- **Description:** Once per round, a king can press E to give the nearest eligible teammate a temporary fake crown.
+- **Files:** Match rules, WebSocket snapshots, keyboard controls, arena rendering, and focused tests.
+
 ## Open
 
 ### Wire golden gun and splash sounds
