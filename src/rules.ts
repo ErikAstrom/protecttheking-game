@@ -47,7 +47,7 @@ export const isFractional = (movement: Movement) => movement !== 'classic';
 export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
   timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalCount: number;
-  world: World;
+  world: World; balanceBots: boolean;
 };
 export const LIMITS = {
   teamSize: { min: 2, max: 8, initial: 4 },
@@ -61,8 +61,14 @@ export const DEFAULT_SETTINGS: Settings = {
   teamSize: LIMITS.teamSize.initial, seconds: LIMITS.seconds.initial,
   wins: LIMITS.wins.initial, size: LIMITS.size.initial, timeout: 'draw',
   movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalCount: LIMITS.portalCount.initial,
-  world: 'penguin',
+  world: 'penguin', balanceBots: false,
 };
+export function matchStartError(settings: Settings, players: readonly Player[]): string | undefined {
+  const counts = TEAMS.map(team => players.filter(player => player.team === team && !player.bot).length);
+  if (settings.balanceBots ? counts.some(count => count === 0) : counts.some(count => count !== settings.teamSize)) {
+    return settings.balanceBots ? 'Starting requires at least one human on each team.' : `Both teams need ${settings.teamSize} players.`;
+  }
+}
 export const TUNING = {
   pushTiles: 2, strengthMs: 6000, speedMs: 4000, slowMs: 3000,
   moveMs: 100, fastMoveMs: 65, slowMoveMs: 200, proximityTiles: 5, tickMs: 25,
@@ -119,6 +125,7 @@ export const HOLES = {
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
+  bot?: true;
   paceUntil: number; pace: 'speed' | 'slow' | null;
   inventory: ItemKind[]; collected: number; used: number; tripped: number;
   sprintReadyAt: number; recoilUntil: number; portalTrips: number;
@@ -163,7 +170,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function readSettings(value: unknown): Settings | null {
   if (!isRecord(value) || (value.timeout !== 'draw' && value.timeout !== 'proximity')) return null;
-  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world } = value;
+  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world, balanceBots = false } = value;
   function valid(key: keyof typeof LIMITS, n: unknown): n is number {
     const { min, max } = LIMITS[key];
     return typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
@@ -171,6 +178,6 @@ export function readSettings(value: unknown): Settings | null {
   return valid('teamSize', teamSize) && valid('seconds', seconds) &&
     valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) &&
     valid('portalCount', portalCount) && portalCount !== 1 &&
-    MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
-    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World } : null;
+    typeof balanceBots === 'boolean' && MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
+    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World, balanceBots } : null;
 }

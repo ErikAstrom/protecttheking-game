@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Smart bots for uneven teams
-- **Status:** in progress — Copilot, 2026-11-19 13:19
-- **Requested by:** Playtest feedback
-- **Description:** Give hosts an option to add bots to the smaller team without moving humans. Keep kings human and have bots guard or hunt using the normal game rules.
-- **Files:** new `src/bots.ts`, `src/bots.test.ts`; small hooks in `src/rules.ts`, `src/game.ts`, `src/client.tsx`; docs.
-- **Notes:** With balancing enabled, one human per team is enough to start. Keep AI in a separate module and reuse the existing movement and item methods without changing collision or pickup logic.
-
 ### Single item slot and Vault pickup
 - **Status:** in progress — Copilot, 2026-11-19 13:16
 - **Requested by:** Playtest feedback
@@ -69,6 +62,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:**
 
 ## Done
+
+### Smart bots for uneven teams
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Give hosts an option to add bots to the smaller team without moving humans. Keep kings human and have bots guard or hunt using the normal game rules.
+- **Files:** `src/bots.ts`, `src/bots.test.ts`, `src/rules.ts`, `src/game.ts`, `src/client.tsx`
+- **Notes:** Completed in `Balance uneven teams with bots`. Verified in the browser that 3v2 starts as 3v3 with a human king and that the bot is removed on return to the lobby.
 
 ### Water holes in the ice
 - **Status:** done — 2026-11-19

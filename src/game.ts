@@ -1,7 +1,8 @@
+import { BotPilot } from './bots.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, matchStartError, surfaceAt } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
@@ -13,6 +14,15 @@ const tileKey = ({ x, y }: Point) => `${x},${y}`;
 const opposite = (team: Team): Team => team === 'red' ? 'blue' : 'red';
 const alive = (player: Player) => !player.respawnAt;
 const homeFacing = (team: Team): Point => team === 'red' ? { x: 1, y: 0 } : { x: -1, y: 0 };
+
+function makePlayer(id: string, name: string, team: Team): Player {
+  return {
+    id, name, team, x: 0, y: 0, king: false,
+    strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
+    sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
+    facing: homeFacing(team), gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
+  };
+}
 
 export class Game {
   readonly state: State = {
@@ -26,6 +36,7 @@ export class Game {
   private readonly nextPush = new Map<string, number>();
   private readonly respawns: number[] = [];
   private readonly replayFrames: ReplayFrame[] = [];
+  private readonly bots = new BotPilot();
   private blocked = new Set<string>();
   private turn = 0;
   private readonly layout: ((size: number) => Obstacle[]) | undefined;
@@ -44,12 +55,7 @@ export class Game {
     const red = players.filter(player => player.team === 'red').length;
     const blue = players.length - red;
     if (red === settings.teamSize && blue === settings.teamSize) return 'Both teams are full.';
-    players.push({
-      id, name, team: red <= blue ? 'red' : 'blue', x: 0, y: 0, king: false,
-      strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
-      facing: homeFacing(red <= blue ? 'red' : 'blue'), gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
-    });
+    players.push(makePlayer(id, name, red <= blue ? 'red' : 'blue'));
     this.state.host ??= id;
   }
 
@@ -59,7 +65,7 @@ export class Game {
     const [player] = this.state.players.splice(index, 1);
     this.input(id, null);
     this.nextMove.delete(id);
-    if (this.state.host === id) this.state.host = this.state.players[0]?.id ?? null;
+    if (this.state.host === id) this.state.host = this.state.players.find(candidate => !candidate.bot)?.id ?? null;
     if (this.state.phase !== 'lobby') this.reset(`${player?.name ?? 'A player'} disconnected; back to lobby.`);
     if (!this.state.players.length) this.state.settings = { ...DEFAULT_SETTINGS };
   }
@@ -85,8 +91,15 @@ export class Game {
 
   start(now: number): string | undefined {
     if (this.state.phase !== 'lobby') return 'A match already started.';
-    if (TEAMS.some(team => this.state.players.filter(player => player.team === team).length !== this.state.settings.teamSize)) {
-      return `Both teams need ${this.state.settings.teamSize} players.`;
+    const error = matchStartError(this.state.settings, this.state.players);
+    if (error) return error;
+    if (this.state.settings.balanceBots) {
+      const { players } = this.state;
+      const red = players.filter(player => player.team === 'red').length;
+      const blue = players.length - red;
+      for (let i = 1; i <= Math.abs(red - blue); i++) {
+        players.push({ ...makePlayer(`bot:${i}`, `Bot ${i}`, red < blue ? 'red' : 'blue'), bot: true });
+      }
     }
     this.startRound(now);
   }
@@ -99,9 +112,11 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
+      players: this.state.players.filter(player => !player.bot),
       obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
+    this.bots.reset();
     this.velocities.clear();
     this.nextMove.clear();
     this.nextPush.clear();
@@ -171,6 +186,11 @@ export class Game {
     let attemptedMove = false;
     for (const player of ordered) {
       if (!alive(player)) continue;
+      if (player.bot && player.recoilUntil <= now) {
+        const action = this.bots.control(this.state, player, this.velocities.get(player.id));
+        this.input(player.id, action.direction);
+        if (action.useItem) this.useItem(player.id, now);
+      }
       const direction = this.inputs.get(player.id);
       if (settings.movement === 'ice') {
         if (player.recoilUntil > now) continue;
@@ -239,6 +259,7 @@ export class Game {
     state.holes = state.settings.world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();
+    this.bots.reset();
     this.velocities.clear();
     this.nextMove.clear();
     this.nextPush.clear();
@@ -247,11 +268,13 @@ export class Game {
     this.turn = (state.round - 1) % TEAMS.length;
     for (const team of TEAMS) {
       const roster = state.players.filter(player => player.team === team);
+      const humans = roster.filter(player => !player.bot);
+      const king = humans[(state.round - 1) % humans.length];
       roster.forEach((player, index) => {
         const corner = { x: 2 + index % 4, y: 2 + Math.floor(index / 4) };
         this.clearEffects(player);
         Object.assign(player, team === 'red' ? corner : mirror(corner, size), {
-          king: index === (state.round - 1) % roster.length,
+          king: player === king,
         });
       });
     }

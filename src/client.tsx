@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio, newShotCount } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
-import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, surfaceAt } from './rules.ts';
+import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, matchStartError, surfaceAt } from './rules.ts';
 import type { Command, Direction, Movement, ServerMessage, Settings, State, World } from './rules.ts';
 
 const MOVEMENT_LABELS: Record<Movement, string> = {
@@ -62,6 +62,12 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
           ...draft, world: WORLDS.find(option => option === event.currentTarget.value) ?? 'penguin',
         })}>
           {WORLDS.map(option => <option key={option} value={option}>{WORLD_LABELS[option]}</option>)}
+        </select>
+      </label>
+      <label>Balance teams with bots
+        <select value={draft.balanceBots ? 'on' : 'off'}
+          onChange={event => setDraft({ ...draft, balanceBots: event.currentTarget.value === 'on' })}>
+          <option value="off">Off</option><option value="on">On</option>
         </select>
       </label>
     </div>
@@ -272,7 +278,7 @@ function App() {
   const host = !!player && state?.host === id;
   const lobby = state?.phase === 'lobby';
   const seconds = state ? Math.max(0, Math.ceil((state.deadline - state.now) / 1000)) : 0;
-  const full = !!state && state.players.length === state.settings.teamSize * TEAMS.length;
+  const startError = state && matchStartError(state.settings, state.players);
   const result = state?.result;
   const surface = state && player ? surfaceAt(state.terrain, player) : undefined;
   const soundControl = <button className="audio-toggle" aria-pressed={sound} disabled={soundPending} onClick={event => {
@@ -320,8 +326,10 @@ function App() {
       </section>
       {lobby && host && <>
         <SettingsForm key={JSON.stringify(state.settings)} settings={state.settings} send={send} />
-        <button disabled={!full} onClick={() => send({ type: 'start' })}>Start match</button>
-        {!full && <p>Fill both teams before starting. Share <code>{location.origin}</code> from your LAN address.</p>}
+        <button disabled={!!startError} onClick={() => send({ type: 'start' })}>Start match</button>
+        {startError
+          ? <p>{startError} Share <code>{location.origin}</code> from your LAN address.</p>
+          : state.settings.balanceBots && <p>Bots fill only the smaller team when the match starts.</p>}
       </>}
       {!lobby && <>
         <section className={`round${seconds <= 10 && state.phase === 'playing' ? ' urgent' : ''}`} aria-label="Round status">

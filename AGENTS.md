@@ -56,6 +56,8 @@ WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractio
 ### Progression & difficulty
 Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world (Penguin world or Castle arena), and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
 
+**Balance teams with bots** is off by default. When enabled, the host can start with one human per team; the configured team size is still the lobby cap. Bots fill only the smaller team, stay out of king rotation, and are removed on return to the lobby. They defend against nearby threats or hunt the opposing king using the same movement and item actions as humans.
+
 ## 3. Tech stack
 
 - Language: TypeScript.
@@ -69,6 +71,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 - `FEATURES.md` — shared feature/task board: ideas, claims, progress notes, done list.
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
+- `src/bots.ts` — host-side bot targeting, grid navigation, and item decisions; match and steering tests in `src/bots.test.ts`.
 - `src/layout.ts` — procedural obstacle layouts (Castle walls) and terrain patches.
 - `src/icesheet.ts` — Penguin world's open ice-sheet layout and `openTiles`; tests in `src/icesheet.test.ts`. `Game` picks the layout by world unless a fixed layout is passed to its constructor.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
@@ -130,6 +133,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Add opt-in bots to the smaller team at match start, keeping kings human, so uneven groups can play without moving anyone.
 - 2026-11-19 — A king who falls into a water hole respawns in their box and nobody scores — Erik asked that falling in means dying and respawning; change `takeOut` callers if drowning a king should give the other team a point.
 - 2026-11-19 — Give Penguin world its own open ice-sheet layout (few chunky icebergs) and default to a 48 board; Castle keeps the dense walls — the owner wants open ice to slide on with bigger walls and units, and the dense layout stays useful for comparison. This relaxes "worlds are visual only" to cover layouts.
 - 2026-11-19 — Golden gun aims where you last moved (no mouse aiming) and kings absorb shots — keeps controls keyboard-only and the capture-the-king goal intact; kings can shield teammates.
