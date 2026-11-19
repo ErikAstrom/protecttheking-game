@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReplayCue } from './audio.ts';
+import { drawHeldGun, drawShots } from './gunfx.ts';
 import { drawIceBlock, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 
-export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥' };
+export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
 const PORTAL_COLOR = '#d4adff';
 const CHARACTER_SCALE = 1.25;
@@ -12,7 +13,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement, world } = board.settings;
@@ -165,6 +166,7 @@ function draw(
     } });
   }
   for (const player of scene.players) {
+    if (player.respawnAt) continue; // Shot or drowned: out of play until respawn.
     const target = next.players.find(candidate => candidate.id === player.id) ?? player;
     const blend = player.portalTrips === target.portalTrips ? fraction : 0;
     const x = player.x + (target.x - player.x) * blend;
@@ -173,6 +175,11 @@ function draw(
     const per = replay ? TUNING.tickMs / REPLAY.sampleMs : -1;
     const motion = player.portalTrips === target.portalTrips
       ? { x: (target.x - player.x) * per, y: (target.y - player.y) * per } : { x: 0, y: 0 };
+    const holder = board.players.find(candidate => candidate.id === player.id);
+    if (!replay && holder && !holder.king && holder.inventory[0] === 'gun') {
+      const size = Math.min(16, Math.max(6, scale * 0.53)) * CHARACTER_SCALE;
+      actors.push({ depth: y + 0.001, draw: () => drawHeldGun(ctx, project, { x, y }, holder.facing, holder.id === id, size) });
+    }
     actors.push({ depth: y, draw: () => {
       const p = project(x, y);
       const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1) * CHARACTER_SCALE;
@@ -226,6 +233,7 @@ function draw(
   }
   actors.sort((left, right) => left.depth - right.depth);
   for (const actor of actors) actor.draw();
+  if (!replay) drawShots(ctx, project, board.shots, scene.now);
   if (replay) {
     for (const [participant, label, color] of [
       [replay.hunterId, 'HUNTER', '#b9fff4'], [replay.kingId, 'CAPTURED KING', '#ffe097'],

@@ -1,5 +1,6 @@
+import { castShot } from './gun.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { DEFAULT_SETTINGS, DIRECTIONS, ICE, ITEM_KINDS, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
 import type { Direction, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 
@@ -8,11 +9,13 @@ const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const offset = (a: Point, b: Point, scale = 1): Point => ({ x: a.x + b.x * scale, y: a.y + b.y * scale });
 const tileKey = ({ x, y }: Point) => `${x},${y}`;
 const opposite = (team: Team): Team => team === 'red' ? 'blue' : 'red';
+const alive = (player: Player) => !player.respawnAt;
+const homeFacing = (team: Team): Point => team === 'red' ? { x: 1, y: 0 } : { x: -1, y: 0 };
 
 export class Game {
   readonly state: State = {
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [],
+    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [],
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
@@ -40,6 +43,7 @@ export class Game {
       id, name, team: red <= blue ? 'red' : 'blue', x: 0, y: 0, king: false,
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
       sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
+      facing: homeFacing(red <= blue ? 'red' : 'blue'), gunAmmo: 0, respawnAt: 0, kills: 0, deaths: 0,
     });
     this.state.host ??= id;
   }
@@ -90,7 +94,7 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
-      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], result: null, replay: null, notice,
+      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
     this.velocities.clear();
@@ -109,14 +113,22 @@ export class Game {
       this.inputs.delete(id);
       if (this.state.settings.movement !== 'ice') this.velocities.delete(id);
     }
-    else if (this.state.phase === 'playing') this.inputs.set(id, direction);
+    else if (this.state.phase === 'playing') {
+      this.inputs.set(id, direction);
+      const player = this.state.players.find(candidate => candidate.id === id);
+      if (player) player.facing = DIRECTIONS[direction];
+    }
   }
 
   useItem(id: string, now: number): void {
     if (this.state.phase !== 'playing' || now >= this.state.deadline) return;
     const player = this.state.players.find(candidate => candidate.id === id);
-    if (!player) return;
+    if (!player || !alive(player)) return;
     if (player.king && player.sprintReadyAt > now) return;
+    if (!player.king && player.inventory[0] === 'gun') {
+      this.fireGun(player, now);
+      return;
+    }
     const kind = player.king ? 'speed' : player.inventory.shift();
     if (!kind) return;
     player.used++;
@@ -128,7 +140,7 @@ export class Game {
     } else {
       const trap = { x: player.x, y: player.y, team: player.team, expires: now + TUNING.trapLifetimeMs };
       this.state.traps.push(trap);
-      const enemy = this.state.players.find(candidate => candidate.team !== trap.team && this.touches(candidate, trap));
+      const enemy = this.state.players.find(candidate => alive(candidate) && candidate.team !== trap.team && this.touches(candidate, trap));
       if (enemy) this.checkTrap(enemy, now);
     }
   }
@@ -143,6 +155,8 @@ export class Game {
       return;
     }
     this.state.traps = this.state.traps.filter(trap => trap.expires > now);
+    this.state.shots = this.state.shots.filter(shot => now - shot.at < GUN.tracerMs);
+    for (const player of players) if (player.respawnAt && player.respawnAt <= now) this.respawn(player);
     for (let index = this.respawns.length - 1; index >= 0; index--) {
       if ((this.respawns[index] ?? Infinity) <= now && this.spawnPickup()) this.respawns.splice(index, 1);
     }
@@ -150,6 +164,7 @@ export class Game {
     const ordered = [first, opposite(first)].flatMap(team => players.filter(player => player.team === team));
     let attemptedMove = false;
     for (const player of ordered) {
+      if (!alive(player)) continue;
       const direction = this.inputs.get(player.id);
       if (settings.movement === 'ice') {
         if (player.recoilUntil > now) continue;
@@ -180,8 +195,8 @@ export class Game {
     const { players, pickups, traps } = this.state;
     this.replayFrames.push({
       now, pickups: pickups.slice(), traps: traps.slice(),
-      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips }) =>
-        ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips })),
+      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt }) =>
+        ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt })),
     });
     while ((this.replayFrames[0]?.now ?? now) < now - REPLAY.windowMs) this.replayFrames.shift();
   }
@@ -196,7 +211,8 @@ export class Game {
   private clearEffects(player: Player): void {
     Object.assign(player, {
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, gunAmmo: 0, respawnAt: 0, kills: 0, deaths: 0,
+      facing: homeFacing(player.team),
     });
   }
 
@@ -206,6 +222,7 @@ export class Game {
     state.round++;
     state.phase = 'playing';
     state.result = null;
+    state.shots = [];
     state.replay = null;
     state.notice = null;
     state.now = now;
@@ -249,12 +266,12 @@ export class Game {
     }
     const pairs = Math.floor(state.settings.pickupCount / 2);
     for (let index = 0; index < pairs; index++) {
-      if (!this.spawnPickup(ITEM_KINDS[index % ITEM_KINDS.length], true)) {
+      if (!this.spawnPickup(COMMON_ITEMS[index % COMMON_ITEMS.length], true)) {
         this.scheduleRespawn(now);
         this.scheduleRespawn(now);
       }
     }
-    if (state.settings.pickupCount % 2 && !this.spawnPickup(ITEM_KINDS[pairs % ITEM_KINDS.length])) {
+    if (state.settings.pickupCount % 2 && !this.spawnPickup(COMMON_ITEMS[pairs % COMMON_ITEMS.length])) {
       this.scheduleRespawn(now);
     }
     this.recordReplayFrame(now);
@@ -268,7 +285,9 @@ export class Game {
       return !paired || (this.spawnOpen(partner) && distance(point, partner) >= TUNING.pickupSpacing);
     });
     if (!point) return false;
-    const randomKind = ITEM_KINDS[Math.floor(Math.random() * ITEM_KINDS.length)] ?? 'strength';
+    const gunAllowed = !kind && !pickups.some(pickup => pickup.kind === 'gun');
+    const randomKind = gunAllowed && Math.random() < GUN.spawnChance ? 'gun'
+      : COMMON_ITEMS[Math.floor(Math.random() * COMMON_ITEMS.length)] ?? 'strength';
     const item = kind ?? randomKind;
     pickups.push({ ...point, kind: item });
     if (paired) pickups.push({ ...mirror(point, settings.size), kind: item });
@@ -377,8 +396,50 @@ export class Game {
     }
   }
 
+  /** Fires one golden gun shot in the player's facing direction. The gun leaves the queue after its last shot. */
+  private fireGun(player: Player, now: number): void {
+    player.gunAmmo = (player.gunAmmo || GUN.shots) - 1;
+    if (!player.gunAmmo) {
+      player.inventory.shift();
+      player.used++;
+    }
+    const targets = this.state.players.filter(candidate => candidate !== player && alive(candidate));
+    const shot = castShot(player, player.facing, player.team, targets,
+      point => this.isBlocked({ x: Math.round(point.x), y: Math.round(point.y) }),
+      GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius);
+    this.state.shots.push({
+      from: { x: player.x, y: player.y }, to: shot.to, team: player.team, at: now,
+      hitId: shot.hit?.id ?? null, stoppedBy: shot.stoppedBy,
+    });
+    const victim = shot.hit && this.state.players.find(candidate => candidate.id === shot.hit?.id);
+    if (!victim) return;
+    player.kills++;
+    victim.deaths++;
+    victim.respawnAt = now + GUN.respawnMs;
+    Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0 });
+    this.velocities.delete(victim.id);
+  }
+
+  /** Brings a shot player back in their team's starting box, on the first free tile near the middle of it. */
+  private respawn(player: Player): void {
+    const { size } = this.state.settings;
+    const smooth = isFractional(this.state.settings.movement);
+    const spots: Point[] = [];
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 7; x++) spots.push({ x, y });
+    spots.sort((a, b) => distance(a, { x: 3, y: 2 }) - distance(b, { x: 3, y: 2 }));
+    const spot = spots
+      .map(point => player.team === 'red' ? point : mirror(point, size))
+      .find(point => !this.isBlocked(point, smooth) && this.occupants(point, player, smooth).length === 0 &&
+        this.state.players.every(other => other === player || !alive(other) || distance(other, point) >= 1));
+    Object.assign(player, spot ?? (player.team === 'red' ? { x: 2, y: 2 } : mirror({ x: 2, y: 2 }, size)), {
+      respawnAt: 0, facing: homeFacing(player.team),
+    });
+    this.velocities.delete(player.id);
+    this.nextMove.delete(player.id);
+  }
+
   private occupants(target: Point, player: Player, smooth: boolean): Player[] {
-    return this.state.players.filter(candidate => candidate !== player &&
+    return this.state.players.filter(candidate => candidate !== player && alive(candidate) &&
       (smooth ? distance(candidate, target) <= 2 * TUNING.smoothRadius : sameTile(candidate, target)));
   }
 
@@ -473,7 +534,7 @@ export class Game {
     if (this.state.settings.timeout === 'draw') return null;
     const count = (team: Team) => {
       const king = this.state.players.find(player => player.king && player.team !== team);
-      return king ? this.state.players.filter(player => player.team === team && !player.king &&
+      return king ? this.state.players.filter(player => player.team === team && !player.king && alive(player) &&
         Math.hypot(player.x - king.x, player.y - king.y) <= TUNING.proximityTiles).length : 0;
     };
     const red = count('red');

@@ -45,6 +45,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 | King | Evade opponents | Cannot push, capture, or collect items. Space activates a four-second sprint followed by a ten-second recharge. |
 | Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
 | Pickups | Modify movement or collision | Collect into an unlimited per-round FIFO queue. Strength lasts six seconds and refreshes without stacking. Speed lasts four seconds. A deployed slow trap expires after 20 seconds or on first enemy contact, slowing them for three seconds. |
+| Golden gun | Rare weapon | Never an opening pickup: each pickup respawn has an 8% chance to be a gun, with at most one gun on the board. While it is the first queued item, Space fires a shot in the direction the holder last moved (3 shots, then it leaves the queue). Shots travel up to 14 tiles, stop at obstacles, pass through teammates, and are absorbed harmlessly by kings of either team: **kings can never be shot**. A shot enemy non-king is out of play (invisible, not solid, can't act, not counted for timeout proximity) and respawns in their team's 7×5 starting box after 3 seconds. Logic in `src/gun.ts` + `Game.fireGun/respawn`; tuning in `GUN`; drawing in `src/gunfx.ts`. |
 | Portals | Offer random escape routes | Off or 2–8 teleporters, four by default. Each entry picks a random unoccupied exit other than the entrance. |
 | Terrain | Offers risky shortcuts | Mirrored patches of quicksand slow movement; ice speeds it up and widens Smooth turns only. Grass and cobblestone are neutral. In Ice movement, terrain changes top speed, so slush drags a sliding penguin down gradually rather than stopping it. |
 
@@ -69,6 +70,8 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
 - `src/layout.ts` — procedural obstacle layouts and terrain patches.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
+- `src/gun.ts` — pure golden-gun shot resolution; tests in `src/gun.test.ts`. `src/gunfx.ts` draws tracers and held guns.
+- Death and respawn (`Player.respawnAt`, `Game.respawn`) are shared by anything that can take a player out of play (golden gun now; water holes next). Dead players must be skipped wherever players collide, act, or count.
 - `src/ice.ts` — pure Ice-movement physics (momentum, drift, glide, wall bounce); tests in `src/ice.test.ts`.
 - `src/server.ts` — HTTP host and WebSocket command handling.
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
@@ -124,6 +127,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Golden gun aims where you last moved (no mouse aiming) and kings absorb shots — keeps controls keyboard-only and the capture-the-king goal intact; kings can shield teammates.
 - 2026-11-19 — Make Penguin world with Ice movement the default and keep Castle/Smooth/Classic selectable — the owner wants a slippery penguin game, and the other modes stay useful for playtest comparison.
 - 2026-11-19 — Give the big-screen viewer a read-only connection so observing never consumes a player slot or grants lobby controls.
 - 2026-11-19 — Add local ice and quicksand without changing Classic steering or requiring players to cross a hazardous surface.

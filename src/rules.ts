@@ -24,11 +24,16 @@ export const ITEMS = {
   strength: { name: 'Strength', color: '#ffc46e' },
   speed: { name: 'Speed', color: '#66ebbf' },
   slow: { name: 'Slow trap', color: '#e3a8ff' },
+  gun: { name: 'Golden gun', color: '#ffd23f' },
 } as const;
-export const ITEM_KINDS = ['strength', 'speed', 'slow'] as const;
+export const ITEM_KINDS = ['strength', 'speed', 'slow', 'gun'] as const;
+/** Items used for opening pickups and ordinary respawns. The golden gun is rare and spawns separately (see GUN). */
+export const COMMON_ITEMS = ['strength', 'speed', 'slow'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
 export type Trap = Point & { team: Team; expires: number };
+/** A golden gun shot, kept briefly so clients can draw the tracer. */
+export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range' };
 export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
 export type Movement = (typeof MOVEMENTS)[number];
 export const WORLDS = ['penguin', 'arena'] as const;
@@ -80,18 +85,40 @@ export const ICE = {
   /** Below this speed (tiles/ms) a coasting penguin stops completely. */
   restSpeed: 0.0004,
 } as const;
+// Golden gun (rare item; see src/gun.ts).
+export const GUN = {
+  /** Shots per gun. */
+  shots: 3,
+  /** Chance that a respawning pickup becomes a golden gun (only when none is on the board). */
+  spawnChance: 0.08,
+  /** Maximum shot distance in tiles. */
+  rangeTiles: 14,
+  /** Shot resolution step and how close (in tiles) a shot must pass to hit a player. */
+  stepTiles: 0.25, hitRadius: 0.5,
+  /** Time before a shot player respawns in their team's starting box. */
+  respawnMs: 3000,
+  /** How long tracers stay in the state for drawing. */
+  tracerMs: 350,
+} as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
   paceUntil: number; pace: 'speed' | 'slow' | null;
   inventory: ItemKind[]; collected: number; used: number; tripped: number;
   sprintReadyAt: number; recoilUntil: number; portalTrips: number;
+  /** Last movement direction; golden gun shots go this way. */
+  facing: Point;
+  /** Shots left on the golden gun at the front of the queue (0 = not started yet). */
+  gunAmmo: number;
+  /** While > 0 the player is dead and respawns at this time. */
+  respawnAt: number;
+  kills: number; deaths: number;
 };
 export type Result = { winner: Team | null; reason: 'capture' | 'timeout' };
 export type ReplayFrame = {
   now: number; pickups: Pickup[]; traps: Trap[];
   players: Pick<Player, 'id' | 'team' | 'king' | 'x' | 'y' | 'strengthUntil' | 'paceUntil' | 'pace' |
-    'recoilUntil' | 'portalTrips'>[];
+    'recoilUntil' | 'portalTrips' | 'respawnAt'>[];
 };
 export type CaptureReplay = {
   hunterId: string; kingId: string; contact: Point; frames: ReplayFrame[];
@@ -100,7 +127,7 @@ export type State = {
   host: string | null; phase: 'lobby' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
-  portals: Point[]; terrain: TerrainPatch[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
+  portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export type ServerMessage =
   | { type: 'hello'; id: string }

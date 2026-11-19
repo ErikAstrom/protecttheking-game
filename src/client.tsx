@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
-import { ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, surfaceAt } from './rules.ts';
+import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, surfaceAt } from './rules.ts';
 import type { Command, Direction, Movement, ServerMessage, Settings, State, World } from './rules.ts';
 
 const MOVEMENT_LABELS: Record<Movement, string> = {
@@ -320,6 +320,9 @@ function App() {
             {surface ? ` · ${penguin ? (surface === 'ice' ? 'Black ice' : 'Slush') : SURFACES[surface].label}` : ''}
           </span> : <span>Spectating until the match ends</span>}
         </section>
+        {player?.respawnAt ? <p className="status out" role="status">
+          You're out! Back in your starting box in {Math.max(1, Math.ceil((player.respawnAt - state.now) / 1000))}s.
+        </p> : null}
         {result && <p className="status" role="status">
           {result.winner ? `${result.winner === 'red' ? 'Red' : 'Blue'} wins the ${state.phase === 'finished' ? 'match' : 'round'}` : 'Round drawn'}
           {' — '}{result.reason === 'capture' ? 'king captured' : 'time expired'}.
@@ -333,11 +336,11 @@ function App() {
           <span className="empty-queue">Kings cannot collect pickups.</span>
         </section>}
         {player && !player.king && <section className="inventory" aria-label="Your item queue">
-          <strong><kbd>Space</kbd> Use first item</strong>
+          <strong><kbd>Space</kbd> {player.inventory[0] === 'gun' ? 'Shoot (where you last moved)' : 'Use first item'}</strong>
           {player.inventory.length ? <ol aria-label="Items in pickup order">
             {player.inventory.map((kind, index) => <li key={`${player.used + index}-${kind}`} className={kind}
               title={ITEMS[kind].name} aria-label={`${index === 0 ? 'Next: ' : ''}${ITEMS[kind].name}`}>
-              <span aria-hidden="true">{GLYPHS[kind]}</span>{index === 0 && <span>{ITEMS[kind].name}</span>}
+              <span aria-hidden="true">{GLYPHS[kind]}</span>{index === 0 && <span>{ITEMS[kind].name}{kind === 'gun' ? ` · ${player.gunAmmo || GUN.shots} shots` : ''}</span>}
             </li>)}
           </ol> : <span className="empty-queue">No items yet — move over a pickup.</span>}
         </section>}

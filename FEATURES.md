@@ -45,14 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Golden gun
-- **Status:** in progress — Claude (Erik's session), 2026-11-19 14:10
-- **Requested by:** Erik
-- **Description:** A rare pickup that lets a non-king shoot 3 times. Shots can kill enemy players but never the king. A killed player respawns in their team's starting box after 3 seconds.
-- **Files:** new `src/gun.ts`, `src/gun.test.ts`, `src/gunfx.ts`; hooks in `src/rules.ts` (item, player/state fields, tuning), `src/game.ts` (spawn, use item, death/respawn), `src/arena.tsx` + `src/penguin.ts` (drawing), `src/client.tsx` (HUD)
-- **Notes:**
-  - 2026-11-19 — Plan: shots go in the direction you last moved, stop at obstacles, pass through teammates, and are blocked (harmlessly) by kings. Rare: only appears on respawns, at a small chance, with at most one on the board.
-
 ### Water holes in the ice
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 14:35 (starts after Golden gun lands, since it reuses its death/respawn)
 - **Requested by:** Erik
@@ -80,6 +72,15 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 _No open items._
 
 ## Done
+
+### Golden gun
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** A rare pickup that lets a non-king shoot 3 times. Shots can kill enemy players but never the king. A killed player respawns in their team's starting box after 3 seconds.
+- **Files:** new `src/gun.ts`, `src/gun.test.ts`, `src/gunfx.ts`; hooks in `src/rules.ts` (item, player/state fields, tuning), `src/game.ts` (spawn, use item, death/respawn), `src/arena.tsx` + `src/penguin.ts` (drawing), `src/client.tsx` (HUD)
+- **Notes:**
+  - 2026-11-19 — Plan: shots go in the direction you last moved, stop at obstacles, pass through teammates, and are blocked (harmlessly) by kings. Rare: only appears on respawns, at a small chance, with at most one on the board.
+  - 2026-11-19 — Done in `Add golden gun with death and respawn`. 11 tests in `src/gun.test.ts` (hit rules, teammates, kings, walls/range, 3 shots then gone, facing, respawn in box for Classic and Ice, dead players can't act or count, rarity). Browser-verified 2v2: HUD shows ammo, held gun + aim line, tracer and SHOT! flash, victim vanishes and respawns in blue's box. Death/respawn is reusable for water holes. No sound yet (claimed separately as "Golden Gun sound cues").
 
 ### Random-exit teleporters and larger characters
 - **Status:** done — 2026-11-19
