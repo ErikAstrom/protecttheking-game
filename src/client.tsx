@@ -31,7 +31,7 @@ function winnerText(state: State, team: Team) {
 
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
-  ['wins', 'Points to win'], ['size', 'Board side'], ['pickupCount', 'Pickups on board'],
+  ['wins', 'Points to win'], ['size', 'Board side'],
   ['tiltChance', 'Tilt chance (%)'], ['tiltSeconds', 'Tilt duration (seconds)'],
 ] as const;
 const teleporterCounts = Array.from({ length: LIMITS.portalCount.max - LIMITS.portalCount.min + 1 },
@@ -50,6 +50,12 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
           value={Number.isNaN(draft[key]) ? '' : draft[key]}
           onChange={event => setDraft({ ...draft, [key]: event.currentTarget.valueAsNumber })} />
       </label>)}
+      <label>Pickups on board
+        <input type="number" min={LIMITS.pickupCount.min} max={LIMITS.pickupCount.max}
+          value={draft.pickupCount ?? ''} placeholder="Auto: one per player"
+          onChange={event => setDraft({ ...draft, pickupCount: event.currentTarget.value === '' ? null : event.currentTarget.valueAsNumber })} />
+        <small>Leave blank for one per player.</small>
+      </label>
       <label>Teleporters
         <select value={draft.portalCount} onChange={event => setDraft({ ...draft, portalCount: Number(event.currentTarget.value) })}>
           {teleporterCounts.map(count => <option key={count} value={count}>{count === 0 ? 'Off' : count}</option>)}

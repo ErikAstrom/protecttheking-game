@@ -404,14 +404,15 @@ export class Game {
       state.portals.push(portal);
       if (mirrored) state.portals.push(mirror(portal, size));
     }
-    const pairs = Math.floor(state.settings.pickupCount / 2);
+    const pickupCount = state.settings.pickupCount ?? state.players.length;
+    const pairs = Math.floor(pickupCount / 2);
     for (let index = 0; index < pairs; index++) {
       if (!this.spawnPickup(COMMON_ITEMS[index % COMMON_ITEMS.length], true)) {
         this.scheduleRespawn(roundStartsAt(state));
         this.scheduleRespawn(roundStartsAt(state));
       }
     }
-    if (state.settings.pickupCount % 2 && !this.spawnPickup(COMMON_ITEMS[pairs % COMMON_ITEMS.length])) {
+    if (pickupCount % 2 && !this.spawnPickup(COMMON_ITEMS[pairs % COMMON_ITEMS.length])) {
       this.scheduleRespawn(roundStartsAt(state));
     }
   }

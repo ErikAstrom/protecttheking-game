@@ -61,7 +61,7 @@ WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractio
 Every world randomizes the two corner cuts independently each round, keeping both starting boxes clear. The host publishes the shared outline for collision, spawning, bot navigation, and drawing. Mirrored terrain outlines are used for both rendering and gameplay. Tilt has a configurable base chance (default 50%) and duration (default 20 seconds). Space multiplies those odds by 1.6 (80% by default, capped at 100%) and increases the visual tilt and directional speed effect by 50%. The server skips tilt if it is disabled or the full event cannot fit. Both effects ease in and out together without adding idle drift. In Space, black-hole gravity works independently and can overlap with tilt.
 
 ### Progression & difficulty
-Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world, and on-board pickup count (0–40). With Random each round selected, the host chooses a world at round start, excluding the previous round's world, and publishes it as `roundWorld` for gameplay and rendering. A disconnect ends the current match and returns remaining players to the lobby.
+Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, one on-board pickup per player. Automatic pickup counts use the round roster, including kings and bots. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world, and on-board pickup count (automatic or a fixed 0–40). With Random each round selected, the host chooses a world at round start, excluding the previous round's world, and publishes it as `roundWorld` for gameplay and rendering. A disconnect ends the current match and returns remaining players to the lobby.
 
 **Balance teams with bots** is off by default. When enabled, the host can start with one human per team; the configured team size is still the lobby cap. Bots fill only the smaller team, stay out of king rotation, and are removed on return to the lobby. They defend against nearby threats or hunt the opposing king using the same movement and item actions as humans.
 
@@ -144,6 +144,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Default to one pickup per rostered player so small and large matches start with comparable item density per player.
 - 2026-11-19 — Offer random map rotation without back-to-back repeats and vary the orientation of whole Rooms formations so new rounds change chase routes, not just doorway positions.
 - 2026-11-19 — Replace sparse Rooms partitions with two-exit rooms and dedicated corridors, and connect the raised walkway to a third staircase near mid-map so players can switch between upper and lower chase routes.
 - 2026-11-19 — Make Space hazards more frequent: multiply tilt odds by 1.6 (capped at 100%, still off at 0%), boost visual and movement tilt by 50%, and halve black-hole delays.

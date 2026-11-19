@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Match pickup count to players by default
-- **Status:** in progress — Copilot, 2026-11-19 14:14
-- **Requested by:** Playtest feedback
-- **Description:** Default to one on-board pickup per active player, with a fixed-count override.
-- **Files:** `src/rules.ts`, `src/client.tsx`, `src/game.ts` (opening pickups), and pickup tests.
-
 ### Arena movement features
 - **Status:** in progress — Copilot, 2026-11-19 14:14
 - **Requested by:** Playtest feedback
@@ -104,6 +98,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Match pickup count to players by default
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Default to one on-board pickup per player, with a fixed-count override.
+- **Notes:** Implemented in `Default pickup count to the round roster`. The automatic count includes kings and bots.
 
 ### Random map rotation and asymmetric Rooms layouts
 - **Status:** done — 2026-11-19

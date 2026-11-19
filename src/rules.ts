@@ -89,7 +89,7 @@ export type World = (typeof WORLDS)[number];
 export const isFractional = (movement: Movement) => movement !== 'classic';
 export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
-  timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalCount: number;
+  timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number | null; portalCount: number;
   world: World; randomWorld: boolean; balanceBots: boolean; tiltChance: number; tiltSeconds: number;
 };
 export const LIMITS = {
@@ -97,7 +97,7 @@ export const LIMITS = {
   seconds: { min: 10, max: 600, initial: 90 },
   wins: { min: 1, max: 20, initial: 3 },
   size: { min: 32, max: 256, initial: 48 },
-  pickupCount: { min: 0, max: 40, initial: 14 },
+  pickupCount: { min: 0, max: 40, initial: null },
   portalCount: { min: 0, max: 8, initial: 4 },
   tiltChance: { min: 0, max: 100, initial: 50 },
   tiltSeconds: { min: 1, max: 120, initial: 20 },
@@ -240,7 +240,7 @@ export function readSettings(value: unknown): Settings | null {
     return typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
   }
   return valid('teamSize', teamSize) && valid('seconds', seconds) &&
-    valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) &&
+    valid('wins', wins) && valid('size', size) && (pickupCount === null || valid('pickupCount', pickupCount)) &&
     valid('portalCount', portalCount) && portalCount !== 1 &&
     valid('tiltChance', tiltChance) && valid('tiltSeconds', tiltSeconds) &&
     typeof randomWorld === 'boolean' && typeof balanceBots === 'boolean' &&
