@@ -44,8 +44,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-_Nothing claimed yet._
-
 ### Penguin world
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 13:05
 - **Requested by:** Erik
@@ -54,6 +52,8 @@ _Nothing claimed yet._
   - 2026-11-19 — Plan: a new "Ice" movement mode built on Smooth's fractional movement, with acceleration and low friction so turns drift. Physics goes in a new `src/ice.ts`, with small hooks in `game.ts`. Penguin/ocean visuals go in a new `src/penguin.ts`, with small hooks in `arena.tsx`. This should stay compatible with "Denser randomized arenas" (I won't touch wall generation).
 
 ## Open
+
+_No open items._
 
 ## Done
 
