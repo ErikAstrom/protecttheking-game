@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Countdown music
+- **Status:** in progress — Copilot, 2026-11-19 13:55
+- **Requested by:** Playtest feedback
+- **Description:** Play a rising musical cue on each countdown number for players and the live viewer when sound is enabled.
+- **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/client.tsx`, `README.md`.
+
 ### Arena layout and gravity tuning
 - **Status:** in progress — Copilot, 2026-11-19 13:53
 - **Requested by:** Playtest feedback
