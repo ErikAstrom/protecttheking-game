@@ -10,9 +10,9 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ### Picking up a feature (agents)
 1. `git pull` first, so you see the latest claims.
-2. Choose an **Open** item that nobody has claimed. Prefer one that touches different files from the items **In progress**.
+2. Choose an **Open** item that nobody has claimed. Prefer one whose likely files don't overlap the **Files** of items **In progress**.
 3. **Claim it before writing any code.** Move the entry to **In progress** and set its status to
-   `in progress — <agent or person>, <YYYY-MM-DD HH:MM>`. Commit just that change (`Claim: <feature title>`) and push it right away.
+   `in progress — <agent or person>, <YYYY-MM-DD HH:MM>`, and fill in **Files** with the main files you expect to touch. Commit just that change (`Claim: <feature title>`) and push it right away.
 4. If the push is rejected, `git pull --rebase`. If someone else claimed the same item in the meantime, they got it first. Undo your claim and pick another item.
 5. Work on one claimed item at a time.
 
@@ -37,6 +37,7 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Status:** open
 - **Requested by:** <name>
 - **Description:** <what and why, as rough as you like>
+- **Files:** <filled in by whoever claims it: main files they expect to touch>
 - **Notes:**
 ```
 
@@ -44,18 +45,22 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Penguin world
-- **Status:** in progress — Claude (Erik's session), 2026-11-19 13:05
-- **Requested by:** Erik
-- **Description:** Theme the game as penguins on a block of ice in the ocean. Penguins try to catch the other team's king penguin. Movement is properly slippery: running builds momentum in the direction you run, and turning makes you drift and drag before the new direction takes over.
-- **Notes:**
-  - 2026-11-19 — Plan: a new "Ice" movement mode built on Smooth's fractional movement, with acceleration and low friction so turns drift. Physics goes in a new `src/ice.ts`, with small hooks in `game.ts`. Penguin/ocean visuals go in a new `src/penguin.ts`, with small hooks in `arena.tsx`. This should stay compatible with "Denser randomized arenas" (I won't touch wall generation).
+_Nothing claimed right now._
 
 ## Open
 
 _No open items._
 
 ## Done
+
+### Penguin world
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** Theme the game as penguins on a block of ice in the ocean. Penguins try to catch the other team's king penguin. Movement is properly slippery: running builds momentum in the direction you run, and turning makes you drift and drag before the new direction takes over.
+- **Files:** new `src/ice.ts`, `src/ice.test.ts`, `src/penguin.ts`; hooks in `src/game.ts`, `src/arena.tsx`, `src/client.tsx`, `src/rules.ts`
+- **Notes:**
+  - 2026-11-19 — Plan: a new "Ice" movement mode built on Smooth's fractional movement, with acceleration and low friction so turns drift. Physics goes in a new `src/ice.ts`, with small hooks in `game.ts`. Penguin/ocean visuals go in a new `src/penguin.ts`, with small hooks in `arena.tsx`. This should stay compatible with "Denser randomized arenas" (I won't touch wall generation).
+  - 2026-11-19 — Done in `Add Penguin world with slippery Ice movement`. Ice and Penguin world are the new defaults; Smooth, Classic and Castle arena remain selectable. 9 new tests in `src/ice.test.ts` (acceleration, drift, skid, glide, wall bounce, slush drag). Verified in a browser 2v2 against bots: live server shows ~0.3 tiles in the first 0.2 s, ~2.5 tiles of sideways drift after a turn, ~8 tiles of glide after release. Castle arena re-checked. Tune feel via `ICE` in `src/rules.ts`.
 
 ### Big-screen match viewer
 - **Status:** done — 2026-11-19
