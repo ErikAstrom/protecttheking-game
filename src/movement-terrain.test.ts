@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { onBoard } from './board-shape.ts';
+import { boardOutline, onBoard } from './board-shape.ts';
 import { Game } from './game.ts';
 import { generateMovementTerrain, movementTerrainAt, terrainSpeed, TRAVERSAL } from './movement-terrain.ts';
 import type { MovementTerrain } from './movement-terrain.ts';
 import { DEFAULT_SETTINGS, TUNING, WORLDS } from './rules.ts';
-import type { Movement, World } from './rules.ts';
+import type { Movement, Point, World } from './rules.ts';
 import { startActiveRound } from './test-round.ts';
 import { levelAt } from './walkway.ts';
 
@@ -117,4 +117,29 @@ test('a Space lane grants a brief carry-out boost only in the marked direction',
 
 test('placement never forces a feature through occupied ground', () => {
   assert.deepEqual(generateMovementTerrain(32, 'rooms', [], () => true), []);
+});
+
+test('Space lanes point inward and reserve room to run out past the arrows', () => {
+  const size = 32;
+  const outline = boardOutline(size, 'space', 0.1, 0.9);
+  const blocked = ({ x, y }: { x: number; y: number }) => x === 14 && y >= 7 && y <= 13;
+  for (const [x, y, orientation, sign] of [[5, 10, 0, 0.9], [26, 10, 0, 0], [10, 5, 0.9, 0.9], [10, 26, 0.9, 0]] as const) {
+    const draws = [(y * size + x + 0.5) / size ** 2, orientation, sign];
+    const lanes = generateMovementTerrain(size, 'space', outline, blocked, () => draws.shift() ?? 0);
+    assert.equal(lanes.length, 2);
+    for (const lane of lanes) {
+      assert.ok(lane.kind === 'boost' && 'direction' in lane);
+      const { x: dx, y: dy } = lane.direction;
+      assert.ok(dx * ((size - 1) / 2 - lane.x) + dy * ((size - 1) / 2 - lane.y) > 0);
+      const length = dx ? lane.rx : lane.ry;
+      const width = dx ? lane.ry : lane.rx;
+      for (let distance = length; distance <= length + 6; distance += 0.25) {
+        for (const side of [-width, 0, width]) {
+          const point: Point = { x: lane.x + dx * distance - dy * side, y: lane.y + dy * distance + dx * side };
+          assert.ok(onBoard(outline, point, 0.5));
+          assert.ok(!blocked({ x: Math.round(point.x), y: Math.round(point.y) }));
+        }
+      }
+    }
+  }
 });

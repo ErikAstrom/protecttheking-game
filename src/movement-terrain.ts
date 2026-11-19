@@ -10,6 +10,7 @@ export type MovementTerrain = Footprint & (
 
 export const TRAVERSAL = {
   slopeGain: 0.38, conveyorGain: 0.32, boostSpeed: 1.48, boostMs: 650, boostAlignment: 0.7,
+  boostRunout: 6,
   rubbleGripMs: 75, rubbleTurnMs: 65,
 } as const;
 
@@ -21,6 +22,7 @@ export function generateMovementTerrain(size: number, world: World, outline: rea
   const start = Math.floor(random() * size * size);
   const horizontal = random() < 0.5;
   const sign = random() < 0.5 ? 1 : -1;
+  const center = (size - 1) / 2;
 
   function fits({ x, y, rx, ry }: Footprint): boolean {
     for (const dx of [-rx, rx]) for (const dy of [-ry, ry]) {
@@ -47,11 +49,21 @@ export function generateMovementTerrain(size: number, world: World, outline: rea
       const a = { x: tile % size, y: Math.floor(tile / size), rx, ry };
       const b = { ...a, ...mirror(a, size) };
       if (Math.abs(a.x - b.x) < 2 * rx + 1 && Math.abs(a.y - b.y) < 2 * ry + 1) continue;
-      if (!fits(a) || !fits(b)) continue;
+      const forward = kind === 'boost' ? Math.sign(center - (alongX ? a.x : a.y)) : sign;
+      const dx = alongX ? forward : 0, dy = alongX ? 0 : forward;
+      if (kind === 'boost') {
+        if (!forward) continue;
+        const halfRunout = TRAVERSAL.boostRunout / 2;
+        const extended = {
+          x: a.x + dx * halfRunout, y: a.y + dy * halfRunout,
+          rx: rx + Math.abs(dx) * halfRunout, ry: ry + Math.abs(dy) * halfRunout,
+        };
+        if (!fits(extended) || !fits({ ...extended, ...mirror(extended, size) })) continue;
+      } else if (!fits(a) || !fits(b)) continue;
       if (kind === 'iceberg' || kind === 'rubble') return [{ ...a, kind }, { ...b, kind }];
       return [
-        { ...a, kind, direction: { x: alongX ? sign : 0, y: alongX ? 0 : sign } },
-        { ...b, kind, direction: { x: alongX ? -sign : 0, y: alongX ? 0 : -sign } },
+        { ...a, kind, direction: { x: dx, y: dy } },
+        { ...b, kind, direction: { x: -dx, y: -dy } },
       ];
     }
   }
