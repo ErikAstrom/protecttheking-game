@@ -14,6 +14,8 @@ npm start
 
 Open `http://localhost:3000` on the host. Players on the same Wi-Fi open one of the `LAN:` URLs printed by the server, such as `http://192.168.1.10:3000`. If they cannot connect, check the host firewall and whether Wi-Fi client isolation is enabled. Keep the server on a trusted LAN; do not port-forward it to the internet.
 
+For a TV or projector, open **[the live viewer](http://localhost:3000/watch)** on the host and use **Toggle fullscreen** if supported. The viewer shows the lobby, live arena, score, timer, and capture replays. It does not join a team or control the match; a player still starts rounds in the regular lobby. Other devices on the same LAN can append `/watch` to the LAN URL.
+
 The first player to join controls the lobby. Both teams must fill before starting. The default is **4v4**, **90 seconds** per round, **first to 3** on a **64×64** board. Choose **Classic** for tile movement or **Smooth** for continuous eight-direction movement. Set **Pickups on board** to 0–40 (14 by default), then choose **Apply settings**. For a smaller test, choose 2 players per team and join from four tabs or devices.
 
 ## Play

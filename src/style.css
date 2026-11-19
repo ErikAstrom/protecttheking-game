@@ -10,6 +10,22 @@ h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.2rem); }
 h2 { font-size: 1.15rem; margin: 0; }
 p { margin: 0.5rem 0; }
 header { margin-bottom: 1.25rem; }
+a { color: #a4efff; }
+.viewer { max-width: 1440px; box-sizing: border-box; padding: 1rem; }
+.viewer:fullscreen { max-width: none; width: 100%; background: #0b1321; overflow: auto; }
+.viewer-header, .viewer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.viewer-header { justify-content: space-between; margin-bottom: 0.65rem; }
+.viewer h1 { font-size: clamp(1.35rem, 3vw, 2rem); }
+.viewer h1 small { font-size: 0.5em; color: #c1d5df; }
+.viewer-actions button { margin: 0; float: none; }
+.viewer-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 0.55rem; }
+.viewer-score .team h2 { gap: 0.4rem; flex-wrap: wrap; }
+.viewer-score .team strong { font-size: 1.45rem; line-height: 1; }
+.viewer-clock { display: grid; justify-items: center; align-content: center; padding-inline: 0.4rem; }
+.viewer-clock span { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.viewer-clock .urgent { color: #ffc46e; }
+.viewer-wait { text-align: center; margin-top: 2rem; }
+.viewer-board canvas { width: min(100%, max(280px, calc((100dvh - 13rem) * 1.6))); }
 .audio-toggle { float: right; background: #183541; border-color: #52717c; color: #eef4ff; margin: 0 0 0.35rem 0.6rem; }
 .eyebrow { color: #ffe18a; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
 .teams, .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }

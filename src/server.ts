@@ -31,7 +31,8 @@ const server = createServer((request, response) => {
     response.writeHead(405, { Allow: 'GET, HEAD' }).end();
     return;
   }
-  const file = files.get(request.url?.split('?')[0] ?? '');
+  const path = request.url?.split('?')[0] ?? '';
+  const file = files.get(path === '/watch' || path === '/watch/' ? '/' : path);
   if (!file) {
     response.writeHead(404).end('Not found');
     return;
@@ -42,11 +43,12 @@ const server = createServer((request, response) => {
 });
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 2048 });
 server.on('upgrade', (request, socket, head) => {
-  if (request.url !== '/game' || request.headers.origin !== `http://${request.headers.host}`) {
+  if ((request.url !== '/game' && request.url !== '/watch/live') ||
+      request.headers.origin !== `http://${request.headers.host}`) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
     return;
   }
-  sockets.handleUpgrade(request, socket, head, client => sockets.emit('connection', client));
+  sockets.handleUpgrade(request, socket, head, client => sockets.emit('connection', client, request));
 });
 
 const game = new Game();
@@ -61,14 +63,15 @@ function broadcast(): void {
   }
 }
 
-sockets.on('connection', socket => {
-  const id = randomUUID();
+sockets.on('connection', (socket, request) => {
+  const id = request.url === '/watch/live' ? null : randomUUID();
   alive.add(socket);
   socket.on('pong', () => alive.add(socket));
-  send(socket, { type: 'hello', id });
+  if (id !== null) send(socket, { type: 'hello', id });
   send(socket, { type: 'state', state: game.state });
   socket.on('message', raw => {
     const respond = (message: string) => send(socket, { type: 'error', message });
+    if (id === null) return respond('Spectators cannot send game commands.');
     let command: unknown;
     try {
       command = JSON.parse(raw.toString());
@@ -119,7 +122,7 @@ sockets.on('connection', socket => {
   });
   socket.on('close', () => {
     alive.delete(socket);
-    if (game.state.players.some(player => player.id === id)) {
+    if (id !== null && game.state.players.some(player => player.id === id)) {
       game.leave(id);
       broadcast();
     }
@@ -148,6 +151,7 @@ server.listen(port, '0.0.0.0', () => {
   const address = server.address();
   const boundPort = typeof address === 'object' && address ? address.port : port;
   console.log(`Host: http://localhost:${boundPort}`);
+  console.log(`Watch: http://localhost:${boundPort}/watch`);
   for (const addresses of Object.values(networkInterfaces())) {
     for (const entry of addresses ?? []) {
       if (!entry.internal && entry.family === 'IPv4') console.log(`LAN:  http://${entry.address}:${boundPort}`);

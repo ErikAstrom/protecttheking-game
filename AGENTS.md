@@ -24,6 +24,7 @@ Agents are free — and expected — to edit this file as the project develops.
 
 - Genre: Top-down 2D team chase/tag game.
 - Platform: Desktop browser on the same LAN as a designated Node host.
+- Big-screen spectators use `/watch`. The read-only display shows the lobby, arena, score, timer, and replays without joining a team. The server rejects game commands on its spectator WebSocket.
 - Rounds: 90 seconds by default, configurable.
 
 ## 2. Game design
@@ -105,6 +106,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Give the big-screen viewer a read-only connection so observing never consumes a player slot or grants lobby controls.
 - 2026-11-19 — Add local ice and quicksand without changing Classic steering or requiring players to cross a hazardous surface.
 - 2026-11-19 — Replace the fixed sketch layout with randomized mirrored obstacles and clear lanes so chases offer different routes each round.
 - 2026-11-19 — Track features in a shared FEATURES.md with push-to-claim — so concurrent agents don't duplicate work.

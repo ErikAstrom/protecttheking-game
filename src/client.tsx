@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio } from './audio.ts';
+import type { ReplayCue } from './audio.ts';
 import { ITEMS, ITEM_KINDS, LIMITS, SURFACES, TEAMS, surfaceAt } from './rules.ts';
 import type { Command, Direction, ServerMessage, Settings, State } from './rules.ts';
 import './style.css';
@@ -10,6 +11,7 @@ const keys = new Map<string, Direction>([
   ['KeyW', 'up'], ['ArrowUp', 'up'], ['KeyS', 'down'], ['ArrowDown', 'down'],
   ['KeyA', 'left'], ['ArrowLeft', 'left'], ['KeyD', 'right'], ['ArrowRight', 'right'],
 ]);
+const watching = location.pathname === '/watch' || location.pathname === '/watch/';
 
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
@@ -49,6 +51,64 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
   </form>;
 }
 
+function Viewer({ state, connected, error, soundControl, onReplayCue }: {
+  state: State | null; connected: boolean; error: string;
+  soundControl: React.ReactNode; onReplayCue: (cue: ReplayCue) => void;
+}) {
+  const screen = useRef<HTMLElement>(null);
+  const [fullscreenError, setFullscreenError] = useState('');
+  const inLobby = state?.phase === 'lobby';
+  const seconds = state ? Math.max(0, Math.ceil((state.deadline - state.now) / 1000)) : 0;
+  const result = state?.result;
+  const winner = result?.winner === 'red' ? 'Red' : 'Blue';
+  const status = result ? (result.winner ? `${winner} wins the ${state?.phase === 'finished' ? 'match' : 'round'}` : 'Round drawn') : null;
+
+  async function toggleFullscreen() {
+    setFullscreenError('');
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await screen.current?.requestFullscreen();
+    } catch (error) {
+      console.error('Could not change viewer fullscreen:', error);
+      setFullscreenError('Fullscreen is unavailable. Try your browser’s fullscreen control.');
+    }
+  }
+
+  return <main className="viewer" ref={screen}>
+    <header className="viewer-header">
+      <h1>Protect the King <small>Live viewer</small></h1>
+      <div className="viewer-actions">
+        {soundControl}
+        {document.fullscreenEnabled && <button onClick={() => void toggleFullscreen()}>Toggle fullscreen</button>}
+      </div>
+    </header>
+    {fullscreenError && <p className="status" role="alert">{fullscreenError}</p>}
+    {error && <p className="status" role="alert">{error}</p>}
+    {!state && !error && <p role="status">{connected ? 'Loading match…' : 'Connecting to the host…'}</p>}
+    {connected && state && <>
+      <section className="viewer-score" aria-label="Scoreboard">
+        <div className="team red"><h2>Red team <strong>{state.score.red}</strong></h2>
+          {inLobby && <p>{state.players.filter(player => player.team === 'red').length}/{state.settings.teamSize} players</p>}
+        </div>
+        <div className="viewer-clock">
+          <strong>{inLobby ? 'Lobby' : `Round ${state.round}`}</strong>
+          {state.phase === 'playing' && <span className={seconds <= 10 ? 'urgent' : ''}>{seconds}s</span>}
+          <small>First to {state.settings.wins}</small>
+        </div>
+        <div className="team blue"><h2>Blue team <strong>{state.score.blue}</strong></h2>
+          {inLobby && <p>{state.players.filter(player => player.team === 'blue').length}/{state.settings.teamSize} players</p>}
+        </div>
+      </section>
+      {inLobby ? <p className="viewer-wait" role="status">{state.notice ?? 'Waiting for the lobby host to start the match.'}</p> : <>
+        {status && <p className="status" role="status">{status} — {result?.reason === 'capture' ? 'king captured' : 'time expired'}.</p>}
+        <div className="viewer-board">
+          <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id="" onReplayCue={onReplayCue} />
+        </div>
+      </>}
+    </>}
+  </main>;
+}
+
 function App() {
   const socket = useRef<WebSocket | null>(null);
   const [id, setId] = useState('');
@@ -62,12 +122,12 @@ function App() {
   const audioPrevious = useRef<State | null>(null);
   useEffect(() => () => audio.current?.close(), []);
   useEffect(() => {
-    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/game`);
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${watching ? '/watch/live' : '/game'}`);
     socket.current = ws;
     ws.onopen = () => setConnected(true);
     ws.onclose = () => {
       setConnected(false);
-      setError('Disconnected. Reload the page to rejoin.');
+      setError(watching ? 'Disconnected. Reload to reconnect the viewer.' : 'Disconnected. Reload the page to rejoin.');
     };
     ws.onerror = () => setError('Could not connect to the game host.');
     ws.onmessage = event => {
@@ -184,15 +244,21 @@ function App() {
   const full = !!state && state.players.length === state.settings.teamSize * TEAMS.length;
   const result = state?.result;
   const surface = state && player ? surfaceAt(state.terrain, player) : undefined;
+  const soundControl = <button className="audio-toggle" aria-pressed={sound} disabled={soundPending} onClick={event => {
+    event.currentTarget.blur();
+    void toggleSound();
+  }}>{sound ? 'Sound on' : 'Enable sound'}</button>;
+  function onReplayCue(cue: ReplayCue) {
+    if (sound) audio.current?.cue(cue);
+  }
+  if (watching) return <Viewer state={state} connected={connected} error={error} soundControl={soundControl}
+    onReplayCue={onReplayCue} />;
   return <main className={state?.phase === 'playing' ? 'in-match' : ''}>
     <header>
-      <button className="audio-toggle" aria-pressed={sound} disabled={soundPending} onClick={event => {
-        event.currentTarget.blur();
-        void toggleSound();
-      }}>{sound ? 'Sound on' : 'Enable sound'}</button>
+      {soundControl}
       <p className="eyebrow">LAN party game</p>
       <h1>Protect the King</h1>
-      <p>Block their hunters. Tag their king.</p>
+      <p>Block their hunters. Tag their king. <a href="/watch" target="_blank" rel="noopener">Open live viewer (new tab)</a></p>
     </header>
     {error && <p className="status" role="alert">{error}</p>}
     {state?.notice && <p className="status" role="status">{state.notice}</p>}
@@ -255,8 +321,7 @@ function App() {
             </li>)}
           </ol> : <span className="empty-queue">No items yet — move over a pickup.</span>}
         </section>}
-        <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id}
-          onReplayCue={cue => { if (sound) audio.current?.cue(cue); }} />
+        <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Matching numbers: linked portals</span>}
           <span className="ice">Ice: faster{smooth ? ', wider turns' : ''}</span><span className="sand">Quicksand: slower</span>
