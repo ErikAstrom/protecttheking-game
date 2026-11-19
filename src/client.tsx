@@ -387,7 +387,8 @@ function App() {
           <RoundCountdown state={state} />
         </div>
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
-          <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
+          <span>Round R badge: red team</span><span>Square B badge: blue team</span>
+          {state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
           {state.settings.world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>

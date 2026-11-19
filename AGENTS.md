@@ -88,6 +88,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/server.ts` — HTTP host and WebSocket command handling.
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
 - `src/arena.tsx`, `src/audio.ts` — tilted board and procedural music and sound effects.
+- Both worlds use the same team badges in live play, `/watch`, and replays: round red **R**, square blue **B**. The white ring still identifies your own character.
 - `src/penguin.ts` — Penguin world drawing (ocean, ice floe, ice blocks, penguins), called from `arena.tsx`.
 
 ## 5. Coding conventions

@@ -200,7 +200,6 @@ export type PenguinLook = {
   /** Base size in pixels. */
   r: number;
   team: string;
-  teamLetter: string;
   king: boolean;
   you: boolean;
   /** Recent screen-space movement per frame, used for facing, leaning and ice spray. */
@@ -266,13 +265,6 @@ export function drawPenguin(ctx: CanvasRenderingContext2D, look: PenguinLook) {
     { x: beakX + facing * r * 0.3, y: -r * 1.9 },
   ], '#ff9f2e');
   if (!facing) shape(ctx, [{ x: -r * 0.16, y: -r * 2.0 }, { x: r * 0.16, y: -r * 2.0 }, { x: 0, y: -r * 1.82 }], '#ff9f2e');
-
-  // Team letter on the belly, so teams are readable without relying on colour alone.
-  ctx.font = `bold ${Math.max(8, r * 0.7)}px system-ui, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#0b1321aa';
-  ctx.fillText(look.teamLetter, facing * r * 0.12, -r * 0.9);
 
   if (king) {
     const cy = -r * 2.68;

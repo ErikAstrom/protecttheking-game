@@ -4,7 +4,7 @@ import { drawHeldGun, drawShots } from './gunfx.ts';
 import { drawBlackHole, drawStars } from './space-art.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional } from './rules.ts';
-import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
+import type { CaptureReplay, ItemKind, Point, ReplayFrame, State, Team } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -53,6 +53,18 @@ function draw(
     ctx.textBaseline = 'middle';
     ctx.fillStyle = fill;
     ctx.fillText(label, x, y);
+  }
+  function teamBadge(team: Team, x: number, y: number, r: number) {
+    const radius = Math.max(9, r * 0.74);
+    ctx.beginPath();
+    if (team === 'red') ctx.arc(x, y, radius, 0, Math.PI * 2);
+    else ctx.roundRect(x - radius, y - radius, radius * 2, radius * 2, 2);
+    ctx.fillStyle = COLORS[team];
+    ctx.fill();
+    ctx.strokeStyle = '#0b1321';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    text(team === 'red' ? 'R' : 'B', x, y, radius * 1.48, '#0b1321');
   }
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -191,8 +203,8 @@ function draw(
     actors.push({ depth: y, draw: () => {
       const p = project(x, y);
       const team = COLORS[player.team];
-      ellipse(p.x, p.y + 2, r * 1.26, r * 0.63, '#07171c8f',
-        player.id === id ? '#fff' : team);
+      ellipse(p.x, p.y + 2, r * 1.35, r * 0.72, '#07171c8f', team);
+      if (player.id === id) ellipse(p.x, p.y + 2, r * 1.12, r * 0.51, '#0000', '#fff');
       if (player.recoilUntil > scene.now) ellipse(p.x, p.y, r * 1.7, r * 0.88, '#ffffff20', '#ffffffaa');
       if (strong || player.paceUntil > scene.now) {
         const color = strong ? ITEMS.strength.color :
@@ -200,9 +212,11 @@ function draw(
         ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
       }
       if (penguin) {
-        return drawPenguin(ctx, {
-          at: p, r, team, teamLetter: player.team === 'red' ? 'R' : 'B', king: player.king, you: player.id === id, motion, time,
+        drawPenguin(ctx, {
+          at: p, r, team, king: player.king, you: player.id === id, motion, time,
         });
+        teamBadge(player.team, p.x, p.y - r * 0.65, r);
+        return;
       }
       polygon(player.king ? team : '#253847', [
         { x: p.x, y: p.y - r * 2.02 }, { x: p.x + r * 0.89, y: p.y - r * 1.5 },
@@ -235,7 +249,7 @@ function draw(
         ]);
         if (player.id === id) text('YOU', p.x, p.y - r * 2.55, 13, '#fff');
       }
-      text(player.team === 'red' ? 'R' : 'B', p.x, p.y - r * 0.55, Math.max(9, r * 0.87), '#0b1321');
+      teamBadge(player.team, p.x, p.y - r * 0.55, r);
     } });
   }
   actors.sort((left, right) => left.depth - right.depth);

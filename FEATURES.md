@@ -51,13 +51,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Give both worlds non-square boundaries and irregular terrain. Add a brief, synchronized tilt that favors downhill movement without moving idle players, with an opt-in ominous musical cue.
 - **Files:** Arena layout and rendering, terrain rules, movement, bot navigation, and audio.
 
-### Clear team badges
-- **Status:** in progress — Copilot, 2026-11-19 13:32
-- **Requested by:** Playtest feedback
-- **Description:** Make red and blue players easy to tell apart on the full board in both worlds, including kings.
-- **Files:** `src/arena.tsx`, `src/penguin.ts`, `src/client.tsx`, `README.md`, `AGENTS.md`
-- **Notes:** Shared visual marker only; no gameplay or hitbox changes.
-
 ### Penguins vs. Orcas
 - **Status:** in progress — Copilot, 2026-11-19 13:41
 - **Requested by:** Playtest feedback
@@ -119,6 +112,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Give the Golden Gun a bigger, distinct musical cue. If a king falls into water, immediately award the opposing team one point and end the round.
 - **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/holes.test.ts`
 - **Notes:** Completed in `Make Golden Gun fanfares bigger and score king falls`. Non-kings still respawn normally. A king's fall only ends the match when the point reaches the configured target.
+
+### Clear team badges
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Round red R and square blue B badges for all players, including kings, in both worlds.
+- **Notes:** Completed in `Make player teams easier to see`. Verified both badges on kings in the live viewer. No gameplay or hitbox changes.
 
 ### Round start countdown
 - **Status:** done — 2026-11-19
