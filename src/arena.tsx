@@ -10,6 +10,7 @@ import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from 
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 import { levelAt, stairAxisAt, WALKWAY } from './walkway.ts';
 import { drawMovementTerrain } from './movement-terrain-art.ts';
+import { CROWN_BLUFF } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖', sword: '⚔' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -20,7 +21,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'movementTerrain' | 'players' | 'shots' | 'holes' | 'splashes' | 'slashes'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'movementTerrain' | 'players' | 'shots' | 'holes' | 'splashes' | 'slashes' | 'crownBluff' | 'crownPop'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement } = board.settings;
@@ -230,9 +231,11 @@ function draw(
     const per = replay ? TUNING.tickMs / REPLAY.sampleMs : -1;
     const motion = player.portalTrips === target.portalTrips
       ? { x: (target.x - player.x) * per, y: (target.y - player.y) * per } : { x: 0, y: 0 };
+    const decoy = !replay && board.crownBluff?.decoyId === player.id && board.crownBluff.until > scene.now;
+    const crowned = player.king || decoy;
     const strong = player.strengthUntil > scene.now;
     const r = Math.min(16, Math.max(6, scale * 0.53)) * CHARACTER_SCALE *
-      (player.king ? 1.2 : 1) * (strong ? STRENGTH_SCALE : 1);
+      (crowned ? 1.2 : 1) * (strong ? STRENGTH_SCALE : 1);
     const holder = board.players.find(candidate => candidate.id === player.id);
     if (!replay && holder && !holder.king && holder.inventory[0] === 'gun') {
       actors.push({ depth: depth + 0.001, draw: () =>
@@ -255,7 +258,8 @@ function draw(
       }
       const orca = player.team === 'blue';
       const drawAnimal = orca ? drawOrca : drawPenguin;
-      drawAnimal(ctx, { at: p, r, team, king: player.king, you: player.id === id, motion, time });
+      drawAnimal(ctx, { at: p, r, team, king: crowned, you: player.id === id, motion, time });
+      if (decoy) text('DECOY', p.x, p.y + r + 8, 11, '#fff0b0');
     } });
   }
   actors.sort((left, right) => left.depth - right.depth);
@@ -263,9 +267,20 @@ function draw(
   if (!replay) drawShots(ctx, project, board.shots, scene.now, point => levelAt(walkway, point) * tierHeight);
   if (!replay) drawSplashes(ctx, project, board.splashes, scene.now);
   if (!replay) drawSlashes(ctx, project, board.slashes, scene.now);
+  const pop = board.crownPop;
+  if (!replay && pop && scene.now - pop.at < CROWN_BLUFF.popMs) {
+    const age = Math.max(0, (scene.now - pop.at) / CROWN_BLUFF.popMs);
+    const p = project(pop.x, pop.y, pop.level * tierHeight);
+    ctx.save();
+    ctx.globalAlpha = 1 - age;
+    ellipse(p.x, p.y, 10 + age * 26, 6 + age * 13, '#ffdb7440', '#ffe097');
+    text('WRONG KING!', p.x, p.y - 20 - age * 20, 15, '#ffe097');
+    ctx.restore();
+  }
   if (replay) {
     for (const [participant, label, color] of [
       [replay.hunterId, 'HUNTER', '#b9fff4'], [replay.kingId, 'CAPTURED KING', '#ffe097'],
+      ...(replay.decoyIds ?? []).filter(id => id !== replay.hunterId).map(id => [id, 'DECOY', '#d2bcfe'] as const),
     ] as const) {
       const start = scene.players.find(player => player.id === participant);
       if (!start) continue;

@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Crown Bluff
-- **Status:** in progress — Copilot, 2026-11-19 14:31
-- **Requested by:** Playtest feedback
-- **Description:** Once per round, a king can press E to give the nearest eligible teammate a temporary fake crown.
-- **Files:** Match rules, WebSocket snapshots, keyboard controls, arena rendering, and focused tests.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -85,6 +79,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Crown Bluff
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Once per round, E gives the king's nearest eligible teammate a fake crown for six seconds. The real crown stays put; tagging the decoy doesn't score.
+- **Notes:** Implemented in `Add Crown Bluff king ability`. Capture replays identify the decoy after the round.
 
 ### Choose available power-ups
 - **Status:** done — 2026-11-19

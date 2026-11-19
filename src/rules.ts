@@ -193,6 +193,8 @@ export const SWORD = {
   respawnMs: 3000, slashMs: 400,
 } as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
+export const CROWN_BLUFF = { range: 4, durationMs: 6000, popMs: 700 } as const;
+export type CrownBluff = { decoyId: string; until: number };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
   bot?: true;
@@ -221,8 +223,11 @@ export type ReplayFrame = {
 };
 export type CaptureReplay = {
   hunterId: string; kingId: string; contact: Point; frames: ReplayFrame[];
+  decoyIds?: string[];
 };
 export type State = {
+  crownBluff?: CrownBluff;
+  crownPop?: Point & { at: number; level: number };
   blackHole: BlackHole | null;
   roundWorld?: World;
   tilt?: Tilt;
@@ -244,7 +249,7 @@ export type Command =
   | { type: 'team'; team: Team }
   | { type: 'input'; direction: Direction | null }
   | { type: 'settings'; settings: Settings }
-  | { type: 'start' | 'next' | 'reset' | 'use-item' };
+  | { type: 'start' | 'next' | 'reset' | 'use-item' | 'crown-bluff' };
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

@@ -250,10 +250,13 @@ function App() {
       transmit({ type: 'input', direction });
     }
     function down(event: KeyboardEvent) {
-      if (event.code === 'Space') {
+      if (event.code === 'Space' || event.code === 'KeyE') {
         if (event.target instanceof HTMLElement && event.target.closest('button, input, select, textarea, [contenteditable="true"]')) return;
         event.preventDefault();
-        if (!event.repeat) transmit({ type: 'use-item' });
+        if (!event.repeat) {
+          if (event.code === 'KeyE') send({ type: 'crown-bluff' });
+          else transmit({ type: 'use-item' });
+        }
         return;
       }
       const direction = keys.get(event.code);
@@ -385,7 +388,9 @@ function App() {
             <h2><span>{TEAM_NAMES[team]}{player?.team === team && <small> · Your team</small>}</span><strong>{state.score[team]}</strong></h2>
             <p>{roster.length}/{state.settings.teamSize} players</p>
             <ul>{roster.map(member => <li key={member.id}>
-              {member.name}{member.id === id ? ' (you)' : ''}{member.king ? ' · King' : ''}{member.id === state.host ? ' · Host' : ''}
+              {member.name}{member.id === id ? ' (you)' : ''}{member.king ? ' · King' : ''}
+              {state.crownBluff?.decoyId === member.id && state.crownBluff.until > state.now ? ' · Decoy' : ''}
+              {member.id === state.host ? ' · Host' : ''}
             </li>)}</ul>
             {lobby && player && player.team !== team && <button disabled={roster.length >= state.settings.teamSize}
               onClick={() => send({ type: 'team', team })}>Join {TEAM_NAMES[team]}</button>}
@@ -420,11 +425,15 @@ function App() {
         </p>}
         {host && state.phase === 'between' && <button onClick={() => send({ type: 'next' })}>Next round</button>}
         {host && state.phase === 'finished' && <button onClick={() => send({ type: 'reset' })}>Back to lobby</button>}
-        {player?.king && <section className="inventory" aria-label="King sprint">
+        {player?.king && <section className="inventory" aria-label="King abilities">
           <strong><kbd>Space</kbd> King sprint</strong>
           <span>{player.pace === 'speed' && player.paceUntil > state.now ? 'Active' :
             player.sprintReadyAt > state.now ? `Recharging: ${Math.ceil((player.sprintReadyAt - state.now) / 1000)}s` : 'Ready'}</span>
           <span className="empty-queue">Kings cannot collect pickups.</span>
+          <strong><kbd>E</kbd> Crown Bluff</strong>
+          <span>{state.crownBluff ? state.crownBluff.until > state.now
+            ? `Decoy active: ${Math.ceil((state.crownBluff.until - state.now) / 1000)}s`
+            : 'Used this round' : 'Once per round · nearest teammate within 4 tiles'}</span>
         </section>}
         {player && !player.king && <section className="inventory" aria-label="Your item slot">
           <strong><kbd>Space</kbd> {heldItem === 'gun' ? 'Shoot (where you last moved)' : 'Use item'}</strong>

@@ -53,22 +53,32 @@ server.on('upgrade', (request, socket, head) => {
 
 const game = new Game();
 const alive = new Set<WebSocket>();
+const audiences = new Map<WebSocket, string | null>();
 function send(socket: WebSocket, message: ServerMessage): void {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
 function broadcast(): void {
-  const snapshot = JSON.stringify({ type: 'state', state: game.state } satisfies ServerMessage);
+  const snapshots = new Map<string | undefined, string>();
   for (const client of sockets.clients) {
-    if (client.readyState === WebSocket.OPEN && client.bufferedAmount < 64 * 1024) client.send(snapshot);
+    if (client.readyState !== WebSocket.OPEN || client.bufferedAmount >= 64 * 1024) continue;
+    const id = audiences.get(client) ?? null;
+    const team = game.state.players.find(player => player.id === id)?.team;
+    let snapshot = snapshots.get(team);
+    if (!snapshot) {
+      snapshot = JSON.stringify({ type: 'state', state: game.snapshot(id) } satisfies ServerMessage);
+      snapshots.set(team, snapshot);
+    }
+    client.send(snapshot);
   }
 }
 
 sockets.on('connection', (socket, request) => {
   const id = request.url === '/watch/live' ? null : randomUUID();
+  audiences.set(socket, id);
   alive.add(socket);
   socket.on('pong', () => alive.add(socket));
   if (id !== null) send(socket, { type: 'hello', id });
-  send(socket, { type: 'state', state: game.state });
+  send(socket, { type: 'state', state: game.snapshot(id) });
   socket.on('message', raw => {
     const respond = (message: string) => send(socket, { type: 'error', message });
     if (id === null) return respond('Spectators cannot send game commands.');
@@ -97,6 +107,9 @@ sockets.on('connection', (socket, request) => {
         case 'use-item':
           game.useItem(id, Date.now());
           return;
+        case 'crown-bluff':
+          error = game.crownBluff(id, Date.now());
+          break;
         case 'team':
           error = command.team === 'red' || command.team === 'blue' ? game.switchTeam(id, command.team) : 'Invalid team.';
           break;
@@ -121,6 +134,7 @@ sockets.on('connection', (socket, request) => {
     else broadcast();
   });
   socket.on('close', () => {
+    audiences.delete(socket);
     alive.delete(socket);
     if (id !== null && game.state.players.some(player => player.id === id)) {
       game.leave(id);

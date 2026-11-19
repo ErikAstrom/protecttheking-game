@@ -5,6 +5,8 @@ import { findChops } from './sword.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
 import { followsBoost, generateMovementTerrain, movementTerrainAt, terrainSpeed, TRAVERSAL } from './movement-terrain.ts';
+import { CROWN_BLUFF } from './rules.ts';
+import type { CrownBluff } from './rules.ts';
 import { DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, SWORD, TEAMS, TUNING, WORLDS, enabledCommonItems, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
@@ -42,6 +44,7 @@ export class Game {
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
+  private readonly bluffs = new Map<Team, CrownBluff>();
   private readonly velocities = new Map<string, Point>();
   private readonly nextMove = new Map<string, number>();
   private readonly nextPush = new Map<string, number>();
@@ -131,6 +134,8 @@ export class Game {
   }
 
   reset(notice: string | null = null): void {
+    this.bluffs.clear();
+    delete this.state.crownPop;
     delete this.state.roundWorld;
     delete this.state.tilt;
     delete this.state.outline;
@@ -275,6 +280,44 @@ export class Game {
     this.recordReplayFrame(now);
   }
 
+  crownBluff(id: string, now: number): string | undefined {
+    const state = this.state;
+    const king = state.players.find(player => player.id === id);
+    if (state.phase !== 'playing' || now >= state.deadline) return 'Crown Bluff is only available during play.';
+    if (!king?.king || !alive(king)) return 'Only the king can use Crown Bluff.';
+    if (this.bluffs.has(king.team)) return 'You already used Crown Bluff this round.';
+    const tier = levelAt(state.walkway, king);
+    const decoy = state.players.filter(player => player.team === king.team && !player.king && alive(player) &&
+      levelAt(state.walkway, player) === tier && distance(king, player) <= CROWN_BLUFF.range)
+      .sort((a, b) => distance(king, a) - distance(king, b))[0];
+    if (!decoy) return 'No nearby teammate on your level for Crown Bluff.';
+    this.bluffs.set(king.team, { decoyId: decoy.id, until: now + CROWN_BLUFF.durationMs });
+  }
+
+  snapshot(id: string | null): State {
+    const state = this.state;
+    const team = state.players.find(player => player.id === id)?.team;
+    if (!this.bluffs.size || state.phase !== 'playing') return state;
+    const ownBluff = team && this.bluffs.get(team);
+    return {
+      ...state,
+      ...(ownBluff ? { crownBluff: ownBluff } : {}),
+      players: state.players.map(player => {
+        const bluff = this.bluffs.get(player.team);
+        if (player.team === team || !bluff || bluff.until <= state.now ||
+            (!player.king && player.id !== bluff.decoyId)) return player;
+        return { ...player, king: true, sprintReadyAt: 0, inventory: [], swordUntil: 0, gunAmmo: 0, vaultUntil: 0 };
+      }),
+    };
+  }
+
+  private popDecoy(player: Player, now: number, tagged: boolean): void {
+    const bluff = this.bluffs.get(player.team);
+    if (bluff?.decoyId !== player.id || bluff.until <= now) return;
+    this.bluffs.set(player.team, { ...bluff, until: 0 });
+    if (tagged) this.state.crownPop = { x: player.x, y: player.y, at: now, level: levelAt(this.state.walkway, player) };
+  }
+
   private recordReplayFrame(now: number, final = false): void {
     const last = this.replayFrames.at(-1);
     if (!final && last && now - last.now < REPLAY.sampleMs) return;
@@ -367,6 +410,8 @@ export class Game {
   }
 
   private startRound(now: number): void {
+    this.bluffs.clear();
+    delete this.state.crownPop;
     const state = this.state;
     const { size, seconds, randomWorld } = state.settings;
     let world = state.settings.world;
@@ -608,6 +653,7 @@ export class Game {
 
   /** Takes a player out of play (shot or drowned) until `respawn` brings them back in their starting box. */
   private takeOut(victim: Player, now: number, cause: 'shot' | 'drowned' | 'chopped', ms: number): void {
+    this.popDecoy(victim, now, false);
     victim.deaths++;
     victim.respawnAt = now + ms;
     victim.outCause = cause;
@@ -683,9 +729,15 @@ export class Game {
         kingId: king.id, hunterId: hunter.id,
         contact: { x: (target.x + opponent.x) / 2, y: (target.y + opponent.y) / 2 },
         frames: this.replayFrames.slice(),
+        ...(this.bluffs.size ? { decoyIds: [...this.bluffs.values()].map(bluff => bluff.decoyId) } : {}),
       };
       this.end({ winner: hunter.team, reason: 'capture' });
       return false;
+    }
+    for (const other of occupants) {
+      if (other.team === player.team) continue;
+      if (!other.king) this.popDecoy(player, now, true);
+      if (!player.king) this.popDecoy(other, now, true);
     }
     if (this.swordContact(player, occupants, now)) return alive(player) && this.move(player, delta, now, smooth);
     const defender = occupants[0];
