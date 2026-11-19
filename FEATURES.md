@@ -53,14 +53,15 @@ _Nothing claimed yet._
 - **Notes:**
   - 2026-11-19 — Plan: a new "Ice" movement mode built on Smooth's fractional movement, with acceleration and low friction so turns drift. Physics goes in a new `src/ice.ts`, with small hooks in `game.ts`. Penguin/ocean visuals go in a new `src/penguin.ts`, with small hooks in `arena.tsx`. This should stay compatible with "Denser randomized arenas" (I won't touch wall generation).
 
-## Open
-
 ### Ice / drag movement effects
-- **Status:** open
+- **Status:** in progress — Copilot, 2026-11-19 12:50
 - **Requested by:** Erik
 - **Description:** Surfaces or effects that change how movement feels. For example, ice where players slide and keep momentum, or drag/mud that slows and "sticks". Should work with both Classic and Smooth movement modes.
 - **Notes:**
   - 2026-11-19 — Claude: Global ice sliding is covered by **Penguin world**. Per-tile terrain (ice patches, mud/drag) is still open here.
+  - 2026-11-19 — Copilot: Add local quicksand and ice patches, plus decorative cobblestone. Classic ice changes step speed only; Smooth gets wider turns. No changes to the separate global ice mode.
+
+## Open
 
 ## Done
 
