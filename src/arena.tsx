@@ -10,7 +10,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'walls' | 'portals'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement } = board.settings;
@@ -99,14 +99,24 @@ function draw(
     text(GLYPHS.slow, p.x, p.y, 12, '#fff');
   }
   const actors: { depth: number; draw: () => void }[] = [];
-  for (const wall of board.walls) {
-    actors.push({ depth: wall.y + 0.5, draw: () => {
-      const x = wall.x - 0.5, y = wall.y - 0.5, h = Math.max(4, scale * 0.48);
+  for (const obstacle of board.obstacles) {
+    actors.push({ depth: obstacle.y + 0.5, draw: () => {
+      const { kind } = obstacle;
+      const x = obstacle.x - 0.5, y = obstacle.y - 0.5;
+      const h = Math.max(4, scale * (kind === 'pillar' ? 0.87 : 0.48));
       const near = y + 1;
       polygon('#10272d55', face(x + 0.13, y + 0.35, 1, 1));
-      polygon('#324953', [project(x, near, h), project(x + 1, near, h), project(x + 1, near), project(x, near)]);
-      polygon('#657e82', face(x, y, 1.01, 1, h));
-      polygon('#acc0bc', face(x + 0.12, y + 0.14, 0.76, 0.15, h));
+      const [front, top, trim] = kind === 'crate' ? ['#6c422e', '#b67c47', '#edb777'] :
+        kind === 'pillar' ? ['#414a67', '#8494be', '#c4cdec'] : ['#324953', '#657e82', '#acc0bc'];
+      polygon(front, [project(x, near, h), project(x + 1, near, h), project(x + 1, near), project(x, near)]);
+      polygon(top, face(x, y, 1, 1, h));
+      if (kind === 'pillar') {
+        polygon(trim, face(x + 0.18, y + 0.18, 0.64, 0.64, h));
+        polygon(top, face(x + 0.32, y + 0.32, 0.36, 0.36, h));
+      } else {
+        polygon(trim, face(x + 0.12, y + 0.14, 0.76, 0.15, h));
+        if (kind === 'crate') polygon(trim, face(x + 0.12, y + 0.7, 0.76, 0.15, h));
+      }
     } });
   }
   for (const { x, y, kind } of scene.pickups) {

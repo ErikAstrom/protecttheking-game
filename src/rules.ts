@@ -8,6 +8,7 @@ export const DIRECTIONS = {
 } satisfies Record<string, Point>;
 export type Direction = keyof typeof DIRECTIONS;
 export type Point = { x: number; y: number };
+export type Obstacle = Point & { kind: 'wall' | 'crate' | 'pillar' };
 export const ITEMS = {
   strength: { name: 'Strength', color: '#ffc46e' },
   speed: { name: 'Speed', color: '#66ebbf' },
@@ -63,7 +64,7 @@ export type CaptureReplay = {
 export type State = {
   host: string | null; phase: 'lobby' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
-  deadline: number; now: number; players: Player[]; walls: Point[]; pickups: Pickup[]; traps: Trap[];
+  deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
   portals: PortalPair[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export type ServerMessage =

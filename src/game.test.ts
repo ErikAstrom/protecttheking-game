@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
+import { generateArena, mirror } from './layout.ts';
 import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING } from './rules.ts';
 import type { Settings } from './rules.ts';
 
-function setup(overrides: Partial<Settings> = {}) {
-  const game = new Game();
+function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10, y: 21, kind: 'wall' }])) {
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalPairs: 0, ...overrides }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
@@ -13,6 +13,59 @@ function setup(overrides: Partial<Settings> = {}) {
   assert.ok(redKing && blueKing && red && blue);
   return { game, redKing, blueKing, red, blue };
 }
+
+test('denser layouts vary while keeping every open tile reachable and both spawns clear', () => {
+  for (const size of [32, 63, 64, 256]) {
+    let seed = 19;
+    const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32;
+    const arena = generateArena(size, random);
+    assert.notDeepEqual(arena, generateArena(size, random));
+    const key = (x: number, y: number) => y * size + x;
+    const blocked = new Map(arena.map(tile => [key(tile.x, tile.y), tile.kind]));
+    assert.equal(blocked.size, arena.length);
+    const oldWallCount = 2 * (Math.floor(size / 2) - 2 - Math.floor(size / 8) +
+      Math.floor(size / 3) - Math.floor(size / 9));
+    assert.ok(arena.filter(tile => tile.kind === 'wall').length > oldWallCount);
+    assert.ok(arena.some(tile => tile.kind === 'crate') && arena.some(tile => tile.kind === 'pillar'));
+    for (const tile of arena) {
+      assert.ok(tile.x >= 0 && tile.x < size && tile.y >= 0 && tile.y < size);
+      const partner = mirror(tile, size);
+      assert.equal(blocked.get(key(partner.x, partner.y)), tile.kind);
+    }
+    for (let x = 1; x <= 6; x++) {
+      for (let y = 1; y <= 4; y++) {
+        assert.ok(!blocked.has(key(x, y)));
+        const partner = mirror({ x, y }, size);
+        assert.ok(!blocked.has(key(partner.x, partner.y)));
+      }
+    }
+    const visited = new Set([0]);
+    const queue = [0];
+    for (const index of queue) {
+      const x = index % size, y = Math.floor(index / size);
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]] as const) {
+        if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+        const neighbor = key(nx, ny);
+        if (blocked.has(neighbor) || visited.has(neighbor)) continue;
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+    assert.equal(visited.size + blocked.size, size * size);
+  }
+});
+
+test('crates and pillars block players in both movement modes', () => {
+  for (const movement of ['classic', 'smooth'] as const) {
+    for (const kind of ['crate', 'pillar'] as const) {
+      const { game, red } = setup({ movement }, new Game(() => [{ x: 11, y: 10, kind }]));
+      Object.assign(red, { x: 10, y: 10 });
+      game.input(red.id, 'right');
+      game.tick(1050);
+      assert.equal(red.x, 10);
+    }
+  }
+});
 
 test('a defender blocks a hunter until the hunter has strength', () => {
   const { game, red, blue } = setup();
@@ -198,17 +251,18 @@ test('portals work both ways without retriggering on arrival and do not land on 
 });
 
 test('configured portals spawn on open ground, clear of pickups and starting players', () => {
-  const { game } = setup({ size: 32, portalPairs: 4, pickupCount: 40 });
-  const { portals, walls, pickups, players } = game.state;
+  const { game } = setup({ size: 32, portalPairs: 4, pickupCount: 40 }, new Game());
+  const { portals, obstacles, pickups, players } = game.state;
   assert.equal(portals.length, 4);
   assert.equal(pickups.length, 40);
   const endpoints = portals.flatMap(pair => [pair.a, pair.b]);
   for (const [index, endpoint] of endpoints.entries()) {
-    assert.ok(!walls.some(wall => wall.x === endpoint.x && wall.y === endpoint.y));
+    assert.ok(!obstacles.some(tile => tile.x === endpoint.x && tile.y === endpoint.y));
     for (const other of [...endpoints.slice(index + 1), ...players, ...pickups]) {
       assert.ok(Math.hypot(other.x - endpoint.x, other.y - endpoint.y) >= TUNING.pickupSpacing);
     }
   }
+  assert.ok(pickups.every(pickup => !obstacles.some(tile => tile.x === pickup.x && tile.y === pickup.y)));
 });
 
 test('a smooth portal moves the player to the exact exit and uses up that movement tick', () => {

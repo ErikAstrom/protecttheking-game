@@ -1,30 +1,17 @@
 import { DEFAULT_SETTINGS, DIRECTIONS, ITEM_KINDS, REPLAY, TEAMS, TUNING } from './rules.ts';
-import type { Direction, ItemKind, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
+import type { Direction, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
+import { generateArena, mirror } from './layout.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const offset = (a: Point, b: Point, scale = 1): Point => ({ x: a.x + b.x * scale, y: a.y + b.y * scale });
 const tileKey = ({ x, y }: Point) => `${x},${y}`;
 const opposite = (team: Team): Team => team === 'red' ? 'blue' : 'red';
-const mirror = ({ x, y }: Point, size: number) => ({ x: size - 1 - x, y: size - 1 - y });
-
-function fixedArena(size: number): Point[] {
-  const walls: Point[] = [];
-  for (let x = Math.floor(size / 8); x < Math.floor(size / 2) - 2; x++) {
-    const tile = { x, y: Math.floor(size / 3) };
-    walls.push(tile, mirror(tile, size));
-  }
-  for (let y = Math.floor(size / 9); y < Math.floor(size / 3); y++) {
-    const tile = { x: Math.floor(size / 2), y };
-    walls.push(tile, mirror(tile, size));
-  }
-  return walls;
-}
 
 export class Game {
   readonly state: State = {
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], walls: [], pickups: [], traps: [], portals: [],
+    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [],
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
@@ -35,6 +22,11 @@ export class Game {
   private readonly replayFrames: ReplayFrame[] = [];
   private blocked = new Set<string>();
   private turn = 0;
+  private readonly layout: (size: number) => Obstacle[];
+
+  constructor(layout = generateArena) {
+    this.layout = layout;
+  }
 
   join(id: string, name: string): string | undefined {
     const { phase, players, settings } = this.state;
@@ -97,7 +89,7 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
-      walls: [], pickups: [], traps: [], portals: [], result: null, replay: null, notice,
+      obstacles: [], pickups: [], traps: [], portals: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
     this.velocities.clear();
@@ -209,8 +201,8 @@ export class Game {
     state.notice = null;
     state.now = now;
     state.deadline = now + seconds * 1000;
-    state.walls = fixedArena(size);
-    this.blocked = new Set(state.walls.map(tileKey));
+    state.obstacles = this.layout(size);
+    this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();
     this.velocities.clear();
     this.nextMove.clear();

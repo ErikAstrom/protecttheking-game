@@ -29,7 +29,7 @@ Agents are free — and expected — to edit this file as the project develops.
 ## 2. Game design
 
 ### Core loop
-Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Solid units and walls create chokepoints. The fixed, symmetric wall layout starts with randomized mirrored pickup pairs (and a single extra if the configured count is odd). Collected pickups return independently as randomly chosen items in random open positions after 2.5–6.5 seconds. Procedural walls are a follow-up.
+Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Each round generates a rotationally symmetric layout with bent stone walls, crates, and pillars, leaving clear spawns and connecting lanes. All obstacles are solid in both movement modes. Opening pickups form randomized mirrored pairs (with one extra if the count is odd). Collected pickups return independently in random open positions after 2.5–6.5 seconds.
 
 ### Win / lose conditions
 - Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
@@ -64,6 +64,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 - `FEATURES.md` — shared feature/task board: ideas, claims, progress notes, done list.
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
+- `src/layout.ts` — procedural obstacle layouts.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
 - `src/server.ts` — HTTP host and WebSocket command handling.
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
@@ -103,6 +104,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Replace the fixed sketch layout with randomized mirrored obstacles and clear lanes so chases offer different routes each round.
 - 2026-11-19 — Track features in a shared FEATURES.md with push-to-claim — so concurrent agents don't duplicate work.
 - 2026-11-19 — Give Smooth turns more inertia at higher speed, but stop on key release so players can still plant themselves at chokepoints.
 - 2026-11-19 — Add numbered portal pairs and mover-only recoil so portals create shortcuts without weakening stationary bodyguards; give kings a rechargeable sprint instead of pickups.

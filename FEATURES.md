@@ -44,11 +44,7 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Denser randomized arenas
-- **Status:** in progress — Copilot, 2026-11-19 12:49
-- **Requested by:** Erik / playtest feedback
-- **Description:** Replace the sketch-based layout with more walls and varied solid obstacles.
-- **Notes:** 2026-11-19 — Generate mirrored layouts for both movement modes with clear spawns and multiple routes. Cover generation, collision, and rendering; leave terrain effects to their own item.
+_Nothing claimed yet._
 
 ### Penguin world
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 13:05
@@ -68,4 +64,8 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## Done
 
-_Nothing yet._
+### Denser randomized arenas
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik / playtest feedback
+- **Description:** Replace the sketch-based layout with more walls and varied solid obstacles.
+- **Notes:** 2026-11-19 — Completed in `Generate denser mirrored arenas`. Added bent walls, crates, and pillars with clear spawns and connecting lanes. Verified both movement modes and a four-client browser start.
