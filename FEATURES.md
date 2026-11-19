@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Random map rotation and asymmetric Rooms layouts
+- **Status:** in progress — Copilot, 2026-11-19 14:14
+- **Requested by:** Playtest feedback
+- **Description:** Add a random map option with no back-to-back repeats, and vary the shape and placement of Rooms & Corridors formations.
+- **Files:** `src/rules.ts` (settings), `src/game.ts` (round selection), `src/client.tsx`, `src/rooms.ts`, and focused tests.
+
 ### Arena movement features
 - **Status:** in progress — Copilot, 2026-11-19 14:14
 - **Requested by:** Playtest feedback
