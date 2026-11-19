@@ -65,6 +65,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** `src/arena.tsx`, `src/penguin.ts`, `src/client.tsx`, `README.md`, `AGENTS.md`
 - **Notes:** Shared visual marker only; no gameplay or hitbox changes.
 
+### Penguins vs. Orcas
+- **Status:** in progress — Copilot, 2026-11-19 13:41
+- **Requested by:** Playtest feedback
+- **Description:** Give Penguin World upright red penguins and belly-sliding blue orcas. Keep teams mechanically identical.
+- **Files:** Rendering and team labels only.
+
 ## Open
 
 ### Wire golden gun and splash sounds
