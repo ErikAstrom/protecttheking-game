@@ -2,11 +2,12 @@ import { BotPilot } from './bots.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
 import { generateRooms } from './rooms.ts';
+import { gravityStep } from './space.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -27,6 +28,7 @@ function makePlayer(id: string, name: string, team: Team): Player {
 
 export class Game {
   readonly state: State = {
+    blackHole: null,
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
     round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [],
     result: null, replay: null, notice: null,
@@ -35,6 +37,8 @@ export class Game {
   private readonly velocities = new Map<string, Point>();
   private readonly nextMove = new Map<string, number>();
   private readonly nextPush = new Map<string, number>();
+  private readonly gravityProgress = new Map<string, number>();
+  private nextBlackHoleAt = 0;
   private readonly respawns: number[] = [];
   private readonly replayFrames: ReplayFrame[] = [];
   private readonly bots = new BotPilot();
@@ -113,6 +117,7 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
+      blackHole: null,
       players: this.state.players.filter(player => !player.bot),
       obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], result: null, replay: null, notice,
     });
@@ -121,6 +126,7 @@ export class Game {
     this.velocities.clear();
     this.nextMove.clear();
     this.nextPush.clear();
+    this.gravityProgress.clear();
     this.respawns.length = 0;
     this.replayFrames.length = 0;
     for (const player of this.state.players) {
@@ -174,6 +180,7 @@ export class Game {
       if (now >= roundStartsAt(this.state)) {
         this.state.phase = 'playing';
         this.state.deadline = now + settings.seconds * 1000;
+        if (settings.world === 'space') this.scheduleBlackHole(now);
         this.recordReplayFrame(now);
       }
       return;
@@ -221,6 +228,15 @@ export class Game {
       }
       if (this.state.phase !== 'playing') return;
     }
+    if (settings.world === 'space') {
+      this.updateBlackHole(now);
+      if (this.state.blackHole && elapsed > 0) {
+        for (const player of ordered) {
+          this.pullTowardBlackHole(player, elapsed, now);
+          if (this.state.phase !== 'playing') return;
+        }
+      }
+    }
     if (attemptedMove) this.turn++;
     this.recordReplayFrame(now);
   }
@@ -229,9 +245,9 @@ export class Game {
     const last = this.replayFrames.at(-1);
     if (!final && last && now - last.now < REPLAY.sampleMs) return;
     if (last?.now === now) this.replayFrames.pop();
-    const { players, pickups, traps } = this.state;
+    const { players, pickups, traps, blackHole } = this.state;
     this.replayFrames.push({
-      now, pickups: pickups.slice(), traps: traps.slice(),
+      now, pickups: pickups.slice(), traps: traps.slice(), blackHole,
       players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt }) =>
         ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips, respawnAt })),
     });
@@ -243,6 +259,57 @@ export class Game {
       : player.pace === 'speed' ? TUNING.fastMoveMs : TUNING.slowMoveMs;
     const surface = surfaceAt(this.state.terrain, player);
     return surface ? base * SURFACES[surface].intervalFactor : base;
+  }
+
+  private scheduleBlackHole(now: number): void {
+    this.nextBlackHoleAt = now + SPACE.minDelayMs + Math.random() * (SPACE.maxDelayMs - SPACE.minDelayMs);
+  }
+
+  private updateBlackHole(now: number): void {
+    const active = this.state.blackHole;
+    if (active) {
+      if (now < active.expires) return;
+      this.state.blackHole = null;
+      this.gravityProgress.clear();
+      this.scheduleBlackHole(now);
+      return;
+    }
+    if (now < this.nextBlackHoleAt) return;
+    const { size, movement } = this.state.settings;
+    const margin = Math.ceil(size * SPACE.spawnInset);
+    const coordinate = () => margin + Math.floor(Math.random() * (size - 2 * margin));
+    for (let attempt = 0; attempt < SPACE.spawnAttempts; attempt++) {
+      const point = { x: coordinate(), y: coordinate() };
+      if (this.isBlocked(point, isFractional(movement))) continue;
+      this.state.blackHole = { ...point, expires: now + SPACE.durationMs };
+      return;
+    }
+    this.scheduleBlackHole(now);
+  }
+
+  private pullTowardBlackHole(player: Player, elapsed: number, now: number): void {
+    const hole = this.state.blackHole;
+    if (!hole || !alive(player) || player.recoilUntil > now) {
+      this.gravityProgress.delete(player.id);
+      return;
+    }
+    const delta = gravityStep(hole, player, elapsed);
+    if (!delta.x && !delta.y) {
+      this.gravityProgress.delete(player.id);
+      return;
+    }
+    if (isFractional(this.state.settings.movement)) {
+      this.moveSmooth(player, delta, now);
+      return;
+    }
+    const progress = (this.gravityProgress.get(player.id) ?? 0) + Math.hypot(delta.x, delta.y);
+    this.gravityProgress.set(player.id, progress % 1);
+    if (progress >= 1) {
+      const step = Math.abs(delta.x) >= Math.abs(delta.y)
+        ? { x: Math.sign(delta.x), y: 0 }
+        : { x: 0, y: Math.sign(delta.y) };
+      this.move(player, step, now, false);
+    }
   }
 
   private clearEffects(player: Player): void {
@@ -265,9 +332,11 @@ export class Game {
     state.notice = null;
     state.now = now;
     state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
-    const layout = world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
+    const layout = world === 'space' ? () => [] : world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
     state.obstacles = (this.layout ?? layout)(size);
-    state.terrain = world === 'rooms' ? [] : generateTerrain(size);
+    state.terrain = world === 'rooms' || world === 'space' ? [] : generateTerrain(size);
+    state.blackHole = null;
+    this.gravityProgress.clear();
     state.holes = world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();

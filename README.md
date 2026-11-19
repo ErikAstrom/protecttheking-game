@@ -23,6 +23,7 @@ For uneven teams, set **Balance teams with bots** to **On** and choose **Apply s
 ## Play
 
 Choose **Rooms & Corridors** in the lobby for long walls, connected rooms, and wide doorways instead of scattered obstacles.
+Choose **Space arena** for an open starfield deck with a temporary black hole. Its purple ring marks the pull range. Steer away to escape; the hole itself never eliminates players.
 
 - Each round starts with **3, 2, 1, GO!** on player screens and the live viewer. Movement and items unlock at **GO!**, when the full round timer starts.
 - Move with **WASD** or the arrow keys. On **Ice**, you build up speed as you run, drift when you turn, skid when you reverse, and keep gliding after you let go, so plan your stops. In Smooth and Ice, hold two directions to move diagonally. Turns carry momentum, so speed boosts make you slide farther; release the keys to hold your position. Look for gold crowns and armored hunters with team-colored shields. Your own piece has a white ring.

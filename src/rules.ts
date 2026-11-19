@@ -37,11 +37,12 @@ export type Trap = Point & { team: Team; expires: number };
 export type Hole = Point & { radius: number };
 /** A brief splash where someone fell into the water, for drawing. */
 export type Splash = Point & { at: number };
+export type BlackHole = Point & { expires: number };
 /** A golden gun shot, kept briefly so clients can draw the tracer. */
 export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range' };
 export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
 export type Movement = (typeof MOVEMENTS)[number];
-export const WORLDS = ['penguin', 'arena', 'rooms'] as const;
+export const WORLDS = ['penguin', 'arena', 'rooms', 'space'] as const;
 export type World = (typeof WORLDS)[number];
 /** True for movement modes with fractional coordinates (Smooth and Ice). Use this instead of `movement === 'smooth'`. */
 export const isFractional = (movement: Movement) => movement !== 'classic';
@@ -125,6 +126,11 @@ export const HOLES = {
   /** Out-of-play time after falling in, and how long the splash is drawn. */
   respawnMs: 3000, splashMs: 700,
 } as const;
+export const SPACE = {
+  minDelayMs: 4000, maxDelayMs: 8000, durationMs: 6500,
+  radius: 9, coreRadius: 1, maxPullPerMs: 0.0035,
+  spawnInset: 0.25, spawnAttempts: 16,
+} as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
@@ -144,7 +150,7 @@ export type Player = Point & {
 };
 export type Result = { winner: Team | null; reason: 'capture' | 'timeout' | 'king-drowned' };
 export type ReplayFrame = {
-  now: number; pickups: Pickup[]; traps: Trap[];
+  now: number; pickups: Pickup[]; traps: Trap[]; blackHole: BlackHole | null;
   players: Pick<Player, 'id' | 'team' | 'king' | 'x' | 'y' | 'strengthUntil' | 'paceUntil' | 'pace' |
     'recoilUntil' | 'portalTrips' | 'respawnAt'>[];
 };
@@ -152,6 +158,7 @@ export type CaptureReplay = {
   hunterId: string; kingId: string; contact: Point; frames: ReplayFrame[];
 };
 export type State = {
+  blackHole: BlackHole | null;
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];

@@ -10,7 +10,7 @@ const MOVEMENT_LABELS: Record<Movement, string> = {
   ice: 'Ice (slippery momentum)', smooth: 'Smooth (8 directions)', classic: 'Classic (tiles)',
 };
 const WORLD_LABELS: Record<World, string> = {
-  penguin: 'Penguin world (ice floe)', arena: 'Castle arena', rooms: 'Rooms & Corridors',
+  penguin: 'Penguin world (ice floe)', arena: 'Castle arena', rooms: 'Rooms & Corridors', space: 'Space arena',
 };
 const RESULT_LABELS = {
   capture: 'king captured', timeout: 'time expired', 'king-drowned': 'king fell through the ice',
@@ -389,6 +389,7 @@ function App() {
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
+          {state.settings.world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}

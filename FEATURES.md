@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Space map with a black hole
-- **Status:** in progress — Copilot, 2026-11-19 13:35
-- **Requested by:** Playtest feedback
-- **Description:** Add a selectable Space arena where a temporary black hole appears at random and slowly pulls nearby players inward without eliminating anyone.
-- **Files:** new `src/space.ts`, focused tests and rendering; hooks in `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/arena.tsx`.
-- **Notes:** Follow Rooms & Corridors. Keep the pull escapable and the hazard visible.
-
 ### Shaped arenas, natural terrain, and sudden tilt
 - **Status:** in progress — Copilot, 2026-11-19 13:34
 - **Requested by:** Playtest feedback
@@ -105,6 +98,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Space map with a black hole
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Add a selectable Space arena where a temporary black hole appears at random and slowly pulls nearby players inward without eliminating anyone.
+- **Files:** `src/space.ts`, `src/space-art.ts`, `src/space.test.ts`, and small game, client, and rendering hooks.
+- **Notes:** Completed in `Add Space arena with a temporary black hole`. Verified pull and expiry in all movement modes and that players can steer away.
 
 ### Rooms & Corridors map
 - **Status:** done — 2026-11-19

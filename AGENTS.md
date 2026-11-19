@@ -33,6 +33,8 @@ Agents are free — and expected — to edit this file as the project develops.
 ### Core loop
 Rooms & Corridors is a separate selectable map. Long symmetric partitions create rooms with wide doorways and multiple routes; there are no scattered obstacles or terrain patches.
 
+Space arena is an open deck with a starfield. During play a black hole spawns randomly in the central area, lasts 6.5 seconds, then waits 4–8 seconds before spawning again. Its visible field pulls nearby players even while idle, but players can steer out and nobody is eliminated by the hole itself. Other maps do not get this hazard.
+
 Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Each round generates a rotationally symmetric layout, leaving clear spawns and connecting lanes. Castle arena uses dense bent stone walls, crates, and pillars (`generateArena`). Penguin world uses an open ice sheet (`generateIceSheet` in `src/icesheet.ts`): a few chunky mirrored icebergs (3–5 tiles a side, about one pair per 16 tiles of board side, so 3 pairs on the default 48 board) with at least 5 tiles of open ice between them, a 3-tile lap lane along the floe edge and 3 tiles clear around each 7×5 spawn box, leaving ~80% of the board two or more tiles from any ice. Tuning in `ICE_SHEET`; `openTiles(size, obstacles, clearance)` lists open ice for features that need empty space (e.g. water holes). All obstacles are solid in both movement modes. Opening pickups form randomized mirrored pairs (with one extra if the count is odd). Collected pickups return independently in random open positions after 2.5–6.5 seconds. In Penguin world the board is drawn as an ice floe: walls are ice blocks (plain tops, so an iceberg's blocks merge into one slab), crates are snow-capped blocks, pillars are ice spires, ice terrain is black ice and quicksand is slush.
 
 ### Win / lose conditions
@@ -76,6 +78,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - `src/bots.ts` — host-side bot targeting, grid navigation, and item decisions; match and steering tests in `src/bots.test.ts`.
 - `src/layout.ts` — procedural obstacle layouts (Castle walls) and terrain patches.
 - `src/rooms.ts` — Rooms & Corridors wall layout.
+- `src/space.ts`, `src/space-art.ts` — black hole pull and Space arena visuals. The host tracks the active black hole and records it in capture replays.
 - `src/icesheet.ts` — Penguin world's open ice-sheet layout and `openTiles`; tests in `src/icesheet.test.ts`. `Game` picks the layout by world unless a fixed layout is passed to its constructor.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
 - `src/holes.ts` — water-hole generation and the fall-in test; tests in `src/holes.test.ts`.
@@ -136,6 +139,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Give Space arena an escapable, temporary black hole so gravity changes chase routes without becoming a new way to lose a round.
 - 2026-11-19 — Add Rooms & Corridors as a separate map — keep the other layouts while offering predictable doorways and team chokepoints.
 - 2026-11-19 — A king falling into water now awards the opposing team one point and ends the round instead of allowing a respawn, so kings can't use water as an escape.
 - 2026-11-19 — Give the Golden Gun original brass-and-bass fanfares with temporary background music ducking, so its spawn and pickup stand out from routine cues.
