@@ -9,6 +9,17 @@ export const DIRECTIONS = {
 export type Direction = keyof typeof DIRECTIONS;
 export type Point = { x: number; y: number };
 export type Obstacle = Point & { kind: 'wall' | 'crate' | 'pillar' };
+export type TerrainPatch = Point & { width: number; height: number; kind: 'ice' | 'sand' };
+export const SURFACES = {
+  ice: { label: 'Ice', intervalFactor: 0.7, turnMs: 200 },
+  sand: { label: 'Quicksand', intervalFactor: 1.7, turnMs: 0 },
+} as const;
+
+export function surfaceAt(terrain: readonly TerrainPatch[], point: Point) {
+  return terrain.find(({ x, y, width, height }) =>
+    point.x >= x - 0.5 && point.x < x + width - 0.5 &&
+    point.y >= y - 0.5 && point.y < y + height - 0.5)?.kind;
+}
 export const ITEMS = {
   strength: { name: 'Strength', color: '#ffc46e' },
   speed: { name: 'Speed', color: '#66ebbf' },
@@ -65,7 +76,7 @@ export type State = {
   host: string | null; phase: 'lobby' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
-  portals: PortalPair[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
+  portals: PortalPair[]; terrain: TerrainPatch[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export type ServerMessage =
   | { type: 'hello'; id: string }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio } from './audio.ts';
-import { ITEMS, ITEM_KINDS, LIMITS, TEAMS } from './rules.ts';
+import { ITEMS, ITEM_KINDS, LIMITS, SURFACES, TEAMS, surfaceAt } from './rules.ts';
 import type { Command, Direction, ServerMessage, Settings, State } from './rules.ts';
 import './style.css';
 
@@ -183,6 +183,7 @@ function App() {
   const seconds = state ? Math.max(0, Math.ceil((state.deadline - state.now) / 1000)) : 0;
   const full = !!state && state.players.length === state.settings.teamSize * TEAMS.length;
   const result = state?.result;
+  const surface = state && player ? surfaceAt(state.terrain, player) : undefined;
   return <main className={state?.phase === 'playing' ? 'in-match' : ''}>
     <header>
       <button className="audio-toggle" aria-pressed={sound} disabled={soundPending} onClick={event => {
@@ -230,6 +231,7 @@ function App() {
           {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
             {player.strengthUntil > state.now ? ' · Strength active' : ''}
             {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
+            {surface ? ` · ${SURFACES[surface].label}` : ''}
           </span> : <span>Spectating until the match ends</span>}
         </section>
         {result && <p className="status" role="status">
@@ -257,6 +259,7 @@ function App() {
           onReplayCue={cue => { if (sound) audio.current?.cue(cue); }} />
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Matching numbers: linked portals</span>}
+          <span className="ice">Ice: faster{smooth ? ', wider turns' : ''}</span><span className="sand">Quicksand: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}
     </>}

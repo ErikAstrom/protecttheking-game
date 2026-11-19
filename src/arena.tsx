@@ -10,7 +10,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement } = board.settings;
@@ -52,8 +52,8 @@ function draw(
   const [a, b, c, d] = face(-0.5, -0.5, size, size);
   polygon('#0b2228', [d, c, { x: c.x, y: c.y + 21 }, { x: d.x, y: d.y + 21 }]);
   const turf = ctx.createLinearGradient(0, a.y, 0, d.y);
-  turf.addColorStop(0, '#21484c');
-  turf.addColorStop(1, '#183a42');
+  turf.addColorStop(0, '#315749');
+  turf.addColorStop(1, '#23453c');
   ctx.fillStyle = turf;
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
@@ -63,6 +63,34 @@ function draw(
   ctx.strokeStyle = '#578187';
   ctx.lineWidth = 2;
   ctx.stroke();
+  const laneWidth = 2;
+  const middle = (size - laneWidth - 1) / 2;
+  const cobble = '#78898469';
+  polygon(cobble, face(-0.5, middle, size, laneWidth));
+  polygon(cobble, face(middle, -0.5, laneWidth, size / 2 - laneWidth / 2));
+  polygon(cobble, face(middle, middle + laneWidth, laneWidth, size / 2 - laneWidth / 2));
+  const cobbleStride = Math.max(2, Math.floor(size / 32));
+  for (let i = 0; i < size - cobbleStride; i += cobbleStride) {
+    polygon('#b5beb047', face(i, middle + 0.3, cobbleStride * 0.65, 0.48));
+    polygon('#b5beb047', face(middle + 0.86, i, 0.48, cobbleStride * 0.65));
+  }
+  for (const { x, y, width, height, kind } of board.terrain) {
+    const ice = kind === 'ice';
+    const left = x - 0.5, top = y - 0.5;
+    polygon(ice ? '#5d9bb4' : '#895b3e', face(left, top, width, height));
+    polygon(ice ? '#93d3dc' : '#b78354', face(left + 0.23, top + 0.23, width - 0.46, height - 0.46));
+    for (let i = 1; i < 4; i++) {
+      const sx = left + width * i / 4;
+      const sy = top + height * (ice ? i : 4 - i) / 4;
+      if (ice) {
+        polygon('#edffff9c', [project(sx - width * 0.14, sy + height * 0.11),
+          project(sx + width * 0.14, sy - height * 0.16), project(sx + width * 0.03, sy + height * 0.08)]);
+      } else {
+        const point = project(sx, sy);
+        ellipse(point.x, point.y, Math.max(4, width * scale * 0.1), Math.max(2, height * scale * 0.042), '#865c47', '#d4a36a');
+      }
+    }
+  }
   if (movement === 'classic') {
     ctx.beginPath();
     const stride = Math.max(1, Math.ceil(size / 64));

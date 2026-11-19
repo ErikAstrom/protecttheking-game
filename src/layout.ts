@@ -1,7 +1,8 @@
-import type { Obstacle, Point } from './rules.ts';
+import type { Obstacle, Point, TerrainPatch } from './rules.ts';
 
 const SECTORS = 4;
 const LANE_MARGIN = 2;
+const sectorEdge = (sector: number, size: number) => Math.floor(size * sector / SECTORS);
 
 export function mirror({ x, y }: Point, size: number): Point {
   return { x: size - 1 - x, y: size - 1 - y };
@@ -9,7 +10,7 @@ export function mirror({ x, y }: Point, size: number): Point {
 
 export function generateArena(size: number, random = Math.random): Obstacle[] {
   const obstacles: Obstacle[] = [];
-  const edge = (sector: number) => Math.floor(size * sector / SECTORS);
+  const edge = (sector: number) => sectorEdge(sector, size);
   for (let row = 0; row < SECTORS / 2; row++) {
     for (let column = 0; column < SECTORS; column++) {
       if (row === 0 && column === 0) continue;
@@ -38,4 +39,21 @@ export function generateArena(size: number, random = Math.random): Obstacle[] {
     }
   }
   return obstacles;
+}
+
+export function generateTerrain(size: number, random = Math.random): TerrainPatch[] {
+  const sectors = [1, 2, 3, 4, 5, 6, 7];
+  const patches: TerrainPatch[] = [];
+  for (const kind of ['ice', 'sand', 'ice', 'sand'] as const) {
+    const [sector] = sectors.splice(Math.floor(random() * sectors.length), 1);
+    if (sector === undefined) break;
+    const column = sector % SECTORS;
+    const row = Math.floor(sector / SECTORS);
+    const x = sectorEdge(column, size) + LANE_MARGIN;
+    const y = sectorEdge(row, size) + LANE_MARGIN;
+    const width = sectorEdge(column + 1, size) - LANE_MARGIN - x;
+    const height = sectorEdge(row + 1, size) - LANE_MARGIN - y;
+    patches.push({ x, y, width, height, kind }, { x: size - x - width, y: size - y - height, width, height, kind });
+  }
+  return patches;
 }

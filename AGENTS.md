@@ -44,6 +44,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 | Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
 | Pickups | Modify movement or collision | Collect into an unlimited per-round FIFO queue. Strength lasts six seconds and refreshes without stacking. Speed lasts four seconds. A deployed slow trap expires after 20 seconds or on first enemy contact, slowing them for three seconds. |
 | Portals | Connect distant points | 0–4 pairs, one by default. Randomized each round. Anyone can enter from either end; an occupied exit prevents travel. |
+| Terrain | Offers risky shortcuts | Mirrored patches of quicksand slow movement; ice speeds it up and widens Smooth turns only. Grass and cobblestone are neutral. |
 
 ### Controls
 WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractional world coordinates, normalized diagonals, speed-dependent turn inertia, and circular unit collisions with no chain pushes. Releasing movement plants the player. On a blocked unit collision, only the mover recoils. Capture and successful strength pushes take priority. Space activates the oldest held item, or the king's sprint.
@@ -64,7 +65,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 - `FEATURES.md` — shared feature/task board: ideas, claims, progress notes, done list.
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
-- `src/layout.ts` — procedural obstacle layouts.
+- `src/layout.ts` — procedural obstacle layouts and terrain patches.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
 - `src/server.ts` — HTTP host and WebSocket command handling.
 - `src/client.tsx`, `src/style.css` — lobby, input, inventory HUD, and scoreboard.
@@ -104,6 +105,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Add local ice and quicksand without changing Classic steering or requiring players to cross a hazardous surface.
 - 2026-11-19 — Replace the fixed sketch layout with randomized mirrored obstacles and clear lanes so chases offer different routes each round.
 - 2026-11-19 — Track features in a shared FEATURES.md with push-to-claim — so concurrent agents don't duplicate work.
 - 2026-11-19 — Give Smooth turns more inertia at higher speed, but stop on key release so players can still plant themselves at chokepoints.

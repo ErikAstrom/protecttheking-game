@@ -1,6 +1,6 @@
-import { DEFAULT_SETTINGS, DIRECTIONS, ITEM_KINDS, REPLAY, TEAMS, TUNING } from './rules.ts';
+import { DEFAULT_SETTINGS, DIRECTIONS, ITEM_KINDS, REPLAY, SURFACES, TEAMS, TUNING, surfaceAt } from './rules.ts';
 import type { Direction, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
-import { generateArena, mirror } from './layout.ts';
+import { generateArena, generateTerrain, mirror } from './layout.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -11,7 +11,7 @@ const opposite = (team: Team): Team => team === 'red' ? 'blue' : 'red';
 export class Game {
   readonly state: State = {
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [],
+    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [],
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
@@ -89,7 +89,7 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
-      obstacles: [], pickups: [], traps: [], portals: [], result: null, replay: null, notice,
+      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
     this.velocities.clear();
@@ -180,8 +180,10 @@ export class Game {
   }
 
   private moveInterval(player: Player, now: number): number {
-    return player.paceUntil <= now ? TUNING.moveMs
+    const base = player.paceUntil <= now ? TUNING.moveMs
       : player.pace === 'speed' ? TUNING.fastMoveMs : TUNING.slowMoveMs;
+    const surface = surfaceAt(this.state.terrain, player);
+    return surface ? base * SURFACES[surface].intervalFactor : base;
   }
 
   private clearEffects(player: Player): void {
@@ -202,6 +204,7 @@ export class Game {
     state.now = now;
     state.deadline = now + seconds * 1000;
     state.obstacles = this.layout(size);
+    state.terrain = generateTerrain(size);
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();
     this.velocities.clear();
@@ -312,7 +315,10 @@ export class Game {
     let velocity = desired;
     if (last) {
       const highSpeed = Math.max(targetSpeed, Math.hypot(last.x, last.y)) > 1 / TUNING.moveMs + Number.EPSILON;
-      const retention = Math.exp(-elapsed / (highSpeed ? TUNING.smoothFastTurnMs : TUNING.smoothTurnMs));
+      const surface = surfaceAt(this.state.terrain, player);
+      const turnMs = Math.max(highSpeed ? TUNING.smoothFastTurnMs : TUNING.smoothTurnMs,
+        surface ? SURFACES[surface].turnMs : 0);
+      const retention = Math.exp(-elapsed / turnMs);
       velocity = {
         x: desired.x + (last.x - desired.x) * retention,
         y: desired.y + (last.y - desired.y) * retention,

@@ -51,5 +51,7 @@ canvas { width: min(100%, 135vh); height: auto; display: block; margin: 0.25rem 
 kbd { border: 1px solid #7f9aaf; border-radius: 0.28rem; padding: 0.12rem 0.26rem; }
 .legend { justify-content: center; }
 .strength { color: #ffb657; }
+.ice { color: #a4efff; }
+.sand { color: #ffc091; }
 .speed { color: #62e4a6; }
 .slow { color: #ce99ff; }

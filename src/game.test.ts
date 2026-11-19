@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Game } from './game.ts';
-import { generateArena, mirror } from './layout.ts';
+import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { DEFAULT_SETTINGS, readSettings, REPLAY, TUNING } from './rules.ts';
 import type { Settings } from './rules.ts';
 
@@ -9,10 +9,66 @@ function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10
   assert.equal(game.configure({ ...DEFAULT_SETTINGS, teamSize: 2, seconds: 10, pickupCount: 0, portalPairs: 0, ...overrides }), undefined);
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   assert.equal(game.start(1000), undefined);
+  game.state.terrain = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
   return { game, redKing, blueKing, red, blue };
 }
+
+test('terrain patches mirror between teams and leave the spawns and center lanes clear', () => {
+  for (const size of [32, 63, 64]) {
+    const patches = generateTerrain(size);
+    for (const kind of ['ice', 'sand'] as const) {
+      assert.equal(patches.filter(patch => patch.kind === kind).length, 4);
+    }
+    for (const { x, y, width, height, kind } of patches) {
+      assert.ok(patches.some(patch => patch.kind === kind && patch.x === size - x - width &&
+        patch.y === size - y - height && patch.width === width && patch.height === height));
+      const middle = (size - 1) / 2;
+      assert.ok(x + width - 0.5 <= middle || x - 0.5 >= middle);
+      assert.ok(y + height - 0.5 <= middle || y - 0.5 >= middle);
+      assert.ok(x >= 7 || y >= 5);
+      assert.ok(x + width <= size - 7 || y + height <= size - 5);
+    }
+  }
+});
+
+test('Classic turns without drift on ice, while quicksand delays the next step', () => {
+  for (const kind of ['ice', 'sand'] as const) {
+    const { game, red } = setup();
+    Object.assign(red, { x: 10, y: 10 });
+    game.state.terrain = [{ x: 8, y: 8, width: 8, height: 8, kind }];
+    game.input(red.id, 'right');
+    game.tick(1025);
+    assert.equal(red.x, 11);
+    game.input(red.id, 'down');
+    game.tick(1100);
+    assert.deepEqual([red.x, red.y], [11, kind === 'ice' ? 11 : 10]);
+    if (kind === 'sand') {
+      game.tick(1200);
+      assert.deepEqual([red.x, red.y], [11, 11]);
+    }
+  }
+});
+
+test('Smooth ice increases speed and widens turns; quicksand slows straight travel', () => {
+  const results = [undefined, 'ice', 'sand'].map(kind => {
+    const { game, red } = setup({ movement: 'smooth' });
+    Object.assign(red, { x: 10, y: 10 });
+    if (kind === 'ice' || kind === 'sand') game.state.terrain = [{ x: 8, y: 8, width: 8, height: 8, kind }];
+    game.input(red.id, 'right');
+    game.tick(1025);
+    const beforeTurn = red.x;
+    game.input(red.id, 'down');
+    game.tick(1050);
+    return { speed: beforeTurn - 10, drift: (red.x - beforeTurn) / (beforeTurn - 10) };
+  });
+  const [grass, ice, sand] = results;
+  assert.ok(grass && ice && sand);
+  assert.ok(ice.speed > grass.speed * 1.3);
+  assert.ok(ice.drift > grass.drift * 1.2);
+  assert.ok(sand.speed < grass.speed * 0.65);
+});
 
 test('denser layouts vary while keeping every open tile reachable and both spawns clear', () => {
   for (const size of [32, 63, 64, 256]) {

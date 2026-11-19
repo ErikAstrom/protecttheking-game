@@ -28,6 +28,7 @@ The first player to join controls the lobby. Both teams must fill before startin
 - When time expires, either nobody scores (**Draw**) or the team with more non-kings within five tiles of the opposing king earns a point (**Proximity**). Equal counts are a draw.
 - Captures replay the last three seconds at ¾ speed, highlighting the hunter, king, and contact point. With sound enabled, a rewind cue marks the start and an impact cue marks contact. Use **Skip replay** or **Watch replay** before the host advances. Replays don't autoplay if your device requests reduced motion. Timeouts don't produce a replay.
 - The lobby host starts each round on a new mirrored layout with stone walls, crates, and pillars. Corners stay open for both teams and lanes give players ways around the obstacles. Opening pickups are mirrored in pairs; respawns are independent. A player disconnect returns the match to the lobby.
+- **Quicksand** slows movement. **Ice** is faster in both modes and makes turns wider in Smooth; Classic never adds a slide step. Grass and cobblestone are neutral.
 
 `npm test` runs the game-rule tests. Re-run `npm run build` and restart the host after changes.
 ## Contributing
