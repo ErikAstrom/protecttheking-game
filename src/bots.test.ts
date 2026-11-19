@@ -59,6 +59,24 @@ test('bot balancing is opt-in and still needs a human king on each team', () => 
   assert.equal(readSettings({ ...DEFAULT_SETTINGS, balanceBots: 'yes' }), null);
 });
 
+test('balancing gives each bot a distinct marked alias without changing human names', () => {
+  const game = lobby({ balanceBots: true, teamSize: 8 });
+  assert.equal(game.join('red', 'Red Captain'), undefined);
+  assert.equal(game.join('blue', 'Blue Captain'), undefined);
+  for (let i = 1; i < 8; i++) {
+    const id = `red-${i}`;
+    assert.equal(game.join(id, `Red ${i}`), undefined);
+    assert.equal(game.switchTeam(id, 'red'), undefined);
+  }
+  startActiveRound(game, 1000);
+  const bots = game.state.players.filter(member => member.bot);
+  assert.equal(bots.length, 7);
+  assert.equal(new Set(bots.map(bot => bot.name)).size, 7);
+  for (const bot of bots) assert.match(bot.name, /^[A-Za-z][A-Za-z -]+ \[BOT\]$/);
+  assert.equal(player(game, 'red').name, 'Red Captain');
+  assert.equal(player(game, 'blue').name, 'Blue Captain');
+});
+
 function setupBot(movement: Movement) {
   const game = lobby({ balanceBots: true, movement });
   for (const id of ['r1', 'b1', 'r2']) game.join(id, id);

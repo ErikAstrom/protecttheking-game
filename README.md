@@ -18,7 +18,7 @@ For a TV or projector, open **[the live viewer](http://localhost:3000/watch)** o
 
 The first player to join controls the lobby. By default, both teams must fill before starting. The default is **4v4**, **90 seconds** per round, **first to 3** on a **64×64** board. The default is **Penguin world** with **Ice** movement. Choose **Smooth** for continuous eight-direction movement without sliding, **Classic** for tile movement, or **Castle arena** for the original look. Set **Pickups on board** to 0–40 (14 by default), then choose **Apply settings**. For a smaller test, choose 2 players per team and join from four tabs or devices.
 
-For uneven teams, set **Balance teams with bots** to **On** and choose **Apply settings**. Once each team has at least one human, the host can start: three humans against two becomes 3v3 with one bot on the smaller team, even if the player limit is four per team. Bots guard or hunt, but only humans take turns as king. Bots are removed when the match returns to the lobby.
+For uneven teams, set **Balance teams with bots** to **On** and choose **Apply settings**. Once each team has at least one human, the host can start: three humans against two becomes 3v3 with one bot on the smaller team, even if the player limit is four per team. Bots have action-hero parody names marked **[BOT]**. They guard or hunt, but only humans take turns as king. Bots are removed when the match returns to the lobby.
 
 ## Play
 

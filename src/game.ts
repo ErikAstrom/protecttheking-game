@@ -19,6 +19,10 @@ const tileKey = ({ x, y }: Point) => `${x},${y}`;
 const opposite = (team: Team): Team => team === 'red' ? 'blue' : 'red';
 const alive = (player: Player) => !player.respawnAt;
 const homeFacing = (team: Team): Point => team === 'red' ? { x: 1, y: 0 } : { x: -1, y: 0 };
+const BOT_ALIASES = [
+  'John Whisk', 'Indiana Drones', 'Jean-Claude Van Clam', 'Rocky Balbot', 'Rambolt',
+  'Lara Craft', 'Ellen Ripcord', 'Sarah Conductor', 'RoboChop', 'Maximus Overdrive',
+];
 
 function makePlayer(id: string, name: string, team: Team): Player {
   return {
@@ -108,8 +112,13 @@ export class Game {
       const { players } = this.state;
       const red = players.filter(player => player.team === 'red').length;
       const blue = players.length - red;
-      for (let i = 1; i <= Math.abs(red - blue); i++) {
-        players.push({ ...makePlayer(`bot:${i}`, `Bot ${i}`, red < blue ? 'red' : 'blue'), bot: true });
+      const count = Math.abs(red - blue);
+      if (count) {
+        const offset = Math.floor(Math.random() * BOT_ALIASES.length);
+        for (let i = 0; i < count; i++) {
+          const alias = BOT_ALIASES[(offset + i) % BOT_ALIASES.length]!;
+          players.push({ ...makePlayer(`bot:${i + 1}`, `${alias} [BOT]`, red < blue ? 'red' : 'blue'), bot: true });
+        }
       }
     }
     this.startRound(now);
