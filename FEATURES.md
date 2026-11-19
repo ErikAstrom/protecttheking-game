@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Arena layout and gravity tuning
+- **Status:** in progress — Copilot, 2026-11-19 13:53
+- **Requested by:** Playtest feedback
+- **Description:** Randomize Rooms with wall segments at least five tiles long, add Space walls, strengthen gravity, and remove decorative crosses and player letters.
+- **Files:** `src/rooms.ts`, `src/space.ts`, `src/rules.ts`, `src/game.ts`, `src/arena.tsx`, `src/client.tsx` and focused tests.
+
 ## Open
 
 ### Wire golden gun and splash sounds
