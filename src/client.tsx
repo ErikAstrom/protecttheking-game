@@ -9,7 +9,9 @@ import type { Command, Direction, Movement, ServerMessage, Settings, State, Worl
 const MOVEMENT_LABELS: Record<Movement, string> = {
   ice: 'Ice (slippery momentum)', smooth: 'Smooth (8 directions)', classic: 'Classic (tiles)',
 };
-const WORLD_LABELS: Record<World, string> = { penguin: 'Penguin world (ice floe)', arena: 'Castle arena' };
+const WORLD_LABELS: Record<World, string> = {
+  penguin: 'Penguin world (ice floe)', arena: 'Castle arena', rooms: 'Rooms & Corridors',
+};
 const RESULT_LABELS = {
   capture: 'king captured', timeout: 'time expired', 'king-drowned': 'king fell through the ice',
 } satisfies Record<NonNullable<State['result']>['reason'], string>;

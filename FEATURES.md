@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Rooms & Corridors map
-- **Status:** in progress — Copilot, 2026-11-19 13:35
-- **Requested by:** Playtest feedback
-- **Description:** Add a selectable map with actual rooms, long walls, and wide doorways instead of scattered obstacles.
-- **Files:** new `src/rooms.ts` and focused tests; small hooks in `src/game.ts`, `src/rules.ts`, `src/client.tsx`.
-- **Notes:** Leave Penguin and Castle layouts to their existing owners.
-
 ### Shaped arenas, natural terrain, and sudden tilt
 - **Status:** in progress — Copilot, 2026-11-19 13:34
 - **Requested by:** Playtest feedback
@@ -105,6 +98,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Follow Rooms & Corridors. Keep the pull escapable and the hazard visible.
 
 ## Done
+
+### Rooms & Corridors map
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Add a selectable map with actual rooms, long walls, and wide doorways instead of scattered obstacles.
+- **Files:** `src/rooms.ts`, `src/rooms.test.ts`, `src/game.ts`, `src/rules.ts`, `src/client.tsx`
+- **Notes:** Completed in `Add Rooms and Corridors map`. Existing maps are unchanged.
 
 ### Golden Gun fanfare and king water loss
 - **Status:** done — 2026-11-19

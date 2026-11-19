@@ -41,7 +41,7 @@ export type Splash = Point & { at: number };
 export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range' };
 export const MOVEMENTS = ['ice', 'smooth', 'classic'] as const;
 export type Movement = (typeof MOVEMENTS)[number];
-export const WORLDS = ['penguin', 'arena'] as const;
+export const WORLDS = ['penguin', 'arena', 'rooms'] as const;
 export type World = (typeof WORLDS)[number];
 /** True for movement modes with fractional coordinates (Smooth and Ice). Use this instead of `movement === 'smooth'`. */
 export const isFractional = (movement: Movement) => movement !== 'classic';

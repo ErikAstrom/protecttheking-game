@@ -6,6 +6,7 @@ import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SU
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
+import { generateRooms } from './rooms.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -254,7 +255,7 @@ export class Game {
 
   private startRound(now: number): void {
     const state = this.state;
-    const { size, seconds } = state.settings;
+    const { size, seconds, world } = state.settings;
     state.round++;
     state.phase = 'countdown';
     state.result = null;
@@ -264,9 +265,10 @@ export class Game {
     state.notice = null;
     state.now = now;
     state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
-    state.obstacles = (this.layout ?? (state.settings.world === 'penguin' ? generateIceSheet : generateArena))(size);
-    state.terrain = generateTerrain(size);
-    state.holes = state.settings.world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
+    const layout = world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
+    state.obstacles = (this.layout ?? layout)(size);
+    state.terrain = world === 'rooms' ? [] : generateTerrain(size);
+    state.holes = world === 'penguin' ? this.holeLayout(size, state.obstacles) : [];
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();
     this.bots.reset();
