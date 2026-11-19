@@ -50,6 +50,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Replace the sketch-based layout with more walls and varied solid obstacles.
 - **Notes:** 2026-11-19 — Generate mirrored layouts for both movement modes with clear spawns and multiple routes. Cover generation, collision, and rendering; leave terrain effects to their own item.
 
+### Penguin world
+- **Status:** in progress — Claude (Erik's session), 2026-11-19 13:05
+- **Requested by:** Erik
+- **Description:** Theme the game as penguins on a block of ice in the ocean. Penguins try to catch the other team's king penguin. Movement is properly slippery: running builds momentum in the direction you run, and turning makes you drift and drag before the new direction takes over.
+- **Notes:**
+  - 2026-11-19 — Plan: a new "Ice" movement mode built on Smooth's fractional movement, with acceleration and low friction so turns drift. Physics goes in a new `src/ice.ts`, with small hooks in `game.ts`. Penguin/ocean visuals go in a new `src/penguin.ts`, with small hooks in `arena.tsx`. This should stay compatible with "Denser randomized arenas" (I won't touch wall generation).
+
 ## Open
 
 ### Ice / drag movement effects
@@ -57,6 +64,7 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Requested by:** Erik
 - **Description:** Surfaces or effects that change how movement feels. For example, ice where players slide and keep momentum, or drag/mud that slows and "sticks". Should work with both Classic and Smooth movement modes.
 - **Notes:**
+  - 2026-11-19 — Claude: Global ice sliding is covered by **Penguin world**. Per-tile terrain (ice patches, mud/drag) is still open here.
 
 ## Done
 
