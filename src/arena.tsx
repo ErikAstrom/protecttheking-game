@@ -3,6 +3,7 @@ import type { ReplayCue } from './audio.ts';
 import { boardOutline } from './board-shape.ts';
 import { drawHeldGun, drawShots } from './gunfx.ts';
 import { drawBlackHole, drawStars } from './space-art.ts';
+import { drawOrca } from './orca.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
 import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State, Team } from './rules.ts';
@@ -225,45 +226,10 @@ function draw(
           player.pace === 'speed' ? ITEMS.speed.color : ITEMS.slow.color;
         ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
       }
-      if (penguin) {
-        drawPenguin(ctx, {
-          at: p, r, team, king: player.king, you: player.id === id, motion, time,
-        });
-        teamBadge(player.team, p.x, p.y - r * 0.65, r);
-        return;
-      }
-      polygon(player.king ? team : '#253847', [
-        { x: p.x, y: p.y - r * 2.02 }, { x: p.x + r * 0.89, y: p.y - r * 1.5 },
-        { x: p.x + r, y: p.y - r * 0.44 }, { x: p.x, y: p.y + r * 0.15 },
-        { x: p.x - r, y: p.y - r * 0.44 }, { x: p.x - r * 0.89, y: p.y - r * 1.5 },
-      ]);
-      if (player.king) {
-        const cy = p.y - r * 2.02;
-        polygon('#ffdc78', [
-          { x: p.x - r, y: cy - r * 0.77 }, { x: p.x - r * 0.42, y: cy - r * 0.53 },
-          { x: p.x, y: cy - r * 1.14 }, { x: p.x + r * 0.42, y: cy - r * 0.53 },
-          { x: p.x + r, y: cy - r * 0.77 }, { x: p.x + r * 0.68, y: cy + r * 0.22 },
-          { x: p.x - r * 0.68, y: cy + r * 0.22 },
-        ]);
-        ellipse(p.x, cy - r * 0.19, r * 0.15, r * 0.18, '#7d361c');
-        text(player.id === id ? 'YOUR KING' : 'KING', p.x, cy - r * 1.63, 13, '#ffe097');
-      } else {
-        const shoulder = p.y - r * 1.05;
-        ellipse(p.x - r * 0.73, shoulder, r * 0.34, r * 0.31, '#a2bbc7', '#263a48');
-        ellipse(p.x + r * 0.73, shoulder, r * 0.34, r * 0.31, '#a2bbc7', '#263a48');
-        polygon(team, [
-          { x: p.x - r * 0.62, y: shoulder }, { x: p.x + r * 0.62, y: shoulder },
-          { x: p.x + r * 0.47, y: p.y - r * 0.2 }, { x: p.x, y: p.y + r * 0.14 },
-          { x: p.x - r * 0.47, y: p.y - r * 0.2 },
-        ]);
-        ellipse(p.x, p.y - r * 1.6, r * 0.62, r * 0.64, '#bacfd8', '#263a48');
-        polygon('#172633', [
-          { x: p.x - r * 0.54, y: p.y - r * 1.69 }, { x: p.x + r * 0.54, y: p.y - r * 1.69 },
-          { x: p.x + r * 0.38, y: p.y - r * 1.4 }, { x: p.x - r * 0.38, y: p.y - r * 1.4 },
-        ]);
-        if (player.id === id) text('YOU', p.x, p.y - r * 2.55, 13, '#fff');
-      }
-      teamBadge(player.team, p.x, p.y - r * 0.55, r);
+      const orca = player.team === 'blue';
+      const drawAnimal = orca ? drawOrca : drawPenguin;
+      drawAnimal(ctx, { at: p, r, team, king: player.king, you: player.id === id, motion, time });
+      teamBadge(player.team, p.x, p.y - r * (orca ? 0.22 : 0.65), r);
     } });
   }
   actors.sort((left, right) => left.depth - right.depth);

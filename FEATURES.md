@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Penguins vs. Orcas
-- **Status:** in progress — Copilot, 2026-11-19 13:41
-- **Requested by:** Playtest feedback
-- **Description:** Give Penguin World upright red penguins and belly-sliding blue orcas. Keep teams mechanically identical.
-- **Files:** Rendering and team labels only.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -92,6 +86,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Add a selectable Space arena where a temporary black hole appears at random and slowly pulls nearby players inward without eliminating anyone.
 - **Files:** `src/space.ts`, `src/space-art.ts`, `src/space.test.ts`, and small game, client, and rendering hooks.
 - **Notes:** Completed in `Add Space arena with a temporary black hole`. Verified pull and expiry in all movement modes and that players can steer away.
+
+### Penguins vs. Orcas
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Use upright red penguins and belly-sliding blue orcas in every world. Movement and hitboxes are unchanged.
+- **Notes:** Completed in `Use penguins and orcas in every world`. Verified both sprites in Penguin World, Castle Arena, and Rooms & Corridors.
 
 ### Rooms & Corridors map
 - **Status:** done — 2026-11-19

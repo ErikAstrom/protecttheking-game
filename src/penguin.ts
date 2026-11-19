@@ -177,8 +177,8 @@ export function drawPenguinTerrain(ctx: CanvasRenderingContext2D, project: Proje
         const p = project(left + 0.4 + random() * (width - 0.8), top + 0.4 + random() * (height - 0.8));
         oval(ctx, p.x, p.y, 3 + random() * 3, 1.5 + random() * 1.5, '#8aa1ae');
       }
-      ctx.restore();
     }
+    ctx.restore();
   }
 }
 
@@ -200,7 +200,8 @@ export function drawPenguin(ctx: CanvasRenderingContext2D, look: PenguinLook) {
   const { at, r, team, king, you, motion, time } = look;
   const speed = Math.hypot(motion.x, motion.y);
   const facing = motion.x > 0.02 ? 1 : motion.x < -0.02 ? -1 : 0;
-  const lean = Math.max(-0.5, Math.min(0.5, motion.x * 1.6));
+  const waddle = Math.sin(time / 72) * Math.min(0.13, speed * 0.8);
+  const lean = Math.max(-0.5, Math.min(0.5, motion.x * 1.6 + waddle));
 
   // Ice spray behind fast-sliding penguins.
   if (speed > 0.12) {

@@ -4,7 +4,7 @@ import { Arena, GLYPHS } from './arena.tsx';
 import { GameAudio, newShotCount } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
 import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, surfaceAt } from './rules.ts';
-import type { Command, Direction, Movement, ServerMessage, Settings, State, World } from './rules.ts';
+import type { Command, Direction, Movement, ServerMessage, Settings, State, Team, World } from './rules.ts';
 
 const MOVEMENT_LABELS: Record<Movement, string> = {
   ice: 'Ice (slippery momentum)', smooth: 'Smooth (8 directions)', classic: 'Classic (tiles)',
@@ -22,6 +22,12 @@ const keys = new Map<string, Direction>([
   ['KeyA', 'left'], ['ArrowLeft', 'left'], ['KeyD', 'right'], ['ArrowRight', 'right'],
 ]);
 const watching = location.pathname === '/watch' || location.pathname === '/watch/';
+const TEAM_NAMES: Record<Team, string> = { red: 'Red Penguins', blue: 'Blue Orcas' };
+
+function winnerText(state: State, team: Team) {
+  const contest = state.phase === 'finished' ? 'match' : 'round';
+  return `${TEAM_NAMES[team]} win the ${contest}`;
+}
 
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
@@ -107,8 +113,7 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
   const inLobby = state?.phase === 'lobby';
   const seconds = state ? Math.max(0, Math.ceil((state.deadline - state.now) / 1000)) : 0;
   const result = state?.result;
-  const winner = result?.winner === 'red' ? 'Red' : 'Blue';
-  const status = result ? (result.winner ? `${winner} wins the ${state?.phase === 'finished' ? 'match' : 'round'}` : 'Round drawn') : null;
+  const status = state && result ? (result.winner ? winnerText(state, result.winner) : 'Round drawn') : null;
 
   async function toggleFullscreen() {
     setFullscreenError('');
@@ -134,7 +139,7 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
     {!state && !error && <p role="status">{connected ? 'Loading match…' : 'Connecting to the host…'}</p>}
     {connected && state && <>
       <section className="viewer-score" aria-label="Scoreboard">
-        <div className="team red"><h2>Red team <strong>{state.score.red}</strong></h2>
+        <div className="team red"><h2>{TEAM_NAMES.red} <strong>{state.score.red}</strong></h2>
           {inLobby && <p>{state.players.filter(player => player.team === 'red').length}/{state.settings.teamSize} players</p>}
         </div>
         <div className="viewer-clock">
@@ -142,7 +147,7 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
           {state.phase === 'playing' && <span className={seconds <= 10 ? 'urgent' : ''}>{seconds}s</span>}
           <small>First to {state.settings.wins}</small>
         </div>
-        <div className="team blue"><h2>Blue team <strong>{state.score.blue}</strong></h2>
+        <div className="team blue"><h2>{TEAM_NAMES.blue} <strong>{state.score.blue}</strong></h2>
           {inLobby && <p>{state.players.filter(player => player.team === 'blue').length}/{state.settings.teamSize} players</p>}
         </div>
       </section>
@@ -321,7 +326,7 @@ function App() {
       {soundControl}
       <p className="eyebrow">LAN party game</p>
       <h1>Protect the King</h1>
-      <p>{penguin ? 'Slide in, block their hunters, tag their king penguin.' : 'Block their hunters. Tag their king.'}{' '}
+      <p>Penguins vs. orcas. Block their hunters and tag their king.{' '}
         <a href="/watch" target="_blank" rel="noopener">Open live viewer (new tab)</a></p>
     </header>
     {error && <p className="status" role="alert">{error}</p>}
@@ -340,13 +345,13 @@ function App() {
         {TEAMS.map(team => {
           const roster = state.players.filter(candidate => candidate.team === team);
           return <div key={team} className={`team ${team}`}>
-            <h2><span>{team} team{player?.team === team && <small> · Your team</small>}</span><strong>{state.score[team]}</strong></h2>
+            <h2><span>{TEAM_NAMES[team]}{player?.team === team && <small> · Your team</small>}</span><strong>{state.score[team]}</strong></h2>
             <p>{roster.length}/{state.settings.teamSize} players</p>
             <ul>{roster.map(member => <li key={member.id}>
               {member.name}{member.id === id ? ' (you)' : ''}{member.king ? ' · King' : ''}{member.id === state.host ? ' · Host' : ''}
             </li>)}</ul>
             {lobby && player && player.team !== team && <button disabled={roster.length >= state.settings.teamSize}
-              onClick={() => send({ type: 'team', team })}>Join {team}</button>}
+              onClick={() => send({ type: 'team', team })}>Join {TEAM_NAMES[team]}</button>}
           </div>;
         })}
       </section>
@@ -371,7 +376,7 @@ function App() {
           Back in your starting box in {Math.max(1, Math.ceil((player.respawnAt - state.now) / 1000))}s.
         </p> : null}
         {result && <p className="status" role="status">
-          {result.winner ? `${result.winner === 'red' ? 'Red' : 'Blue'} wins the ${state.phase === 'finished' ? 'match' : 'round'}` : 'Round drawn'}
+          {result.winner ? winnerText(state, result.winner) : 'Round drawn'}
           {' — '}{RESULT_LABELS[result.reason]}.
         </p>}
         {host && state.phase === 'between' && <button onClick={() => send({ type: 'next' })}>Next round</button>}
@@ -398,7 +403,7 @@ function App() {
           <TiltNotice state={state} />
         </div>
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
-          <span>Round R badge: red team</span><span>Square B badge: blue team</span>
+          <span>Round R badge: {TEAM_NAMES.red}</span><span>Square B badge: {TEAM_NAMES.blue}</span>
           {state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
           {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
           {state.settings.world === 'space' && <span>Black hole: steer away from the purple gravity field</span>}

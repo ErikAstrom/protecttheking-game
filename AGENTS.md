@@ -26,7 +26,7 @@ Agents are free — and expected — to edit this file as the project develops.
 - Platform: Desktop browser on the same LAN as a designated Node host.
 - Big-screen spectators use `/watch`. The read-only display shows the lobby, arena, score, timer, and replays without joining a team. The server rejects game commands on its spectator WebSocket.
 - Rounds: 90 seconds by default, configurable.
-- Theme: **Penguin world** by default — penguin teams on a floating ice floe in the ocean, hunting the other team's king penguin. **Castle arena** is still selectable. Worlds change visuals and the obstacle layout only; rules are identical.
+- Theme: **Penguin world** by default, on a floating ice floe. The red team is **Red Penguins** and the blue team is **Blue Orcas** in every world. Their appearance differs, but species does not change movement, collision, or any other gameplay rule.
 
 ## 2. Game design
 
