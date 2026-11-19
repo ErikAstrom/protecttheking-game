@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Three.js arena renderer
+- **Status:** in progress — Copilot, 2026-11-19 14:19
+- **Requested by:** Playtest feedback
+- **Description:** Render all worlds and characters in 3D while keeping the whole-board camera and existing gameplay.
+- **Files:** `src/arena.tsx`, new renderer modules, dependency manifests, and renderer docs.
+- **Notes:** Implementation on `three-js`; keep Canvas as a fallback and preserve the existing replay pipeline.
+
 ### Sword
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 15:40
 - **Requested by:** Erik
