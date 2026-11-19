@@ -389,12 +389,13 @@ function App() {
           <span>{WORLD_LABELS[state.roundWorld ?? state.settings.world]}</span>
           {player ? <span>{player.king ? 'You wear the crown' : 'Guard or hunt'} · WASD / arrows
             {player.strengthUntil > state.now ? ' · Strength active' : ''}
+            {player.swordUntil > state.now ? ` · Sword out: ${Math.ceil((player.swordUntil - state.now) / 1000)}s` : ''}
             {player.paceUntil > state.now ? ` · ${player.pace === 'speed' ? 'Speed boost' : 'Slowed'}` : ''}
             {surface ? ` · ${penguin ? (surface === 'ice' ? 'Black ice' : 'Slush') : SURFACES[surface].label}` : ''}
           </span> : <span>Spectating until the match ends</span>}
         </section>
         {player?.respawnAt && state.phase === 'playing' ? <p className="status out" role="status">
-          {player.outCause === 'drowned' ? 'Splash! You fell through the ice.' : "You're out! You were shot."}{' '}
+          {player.outCause === 'drowned' ? 'Splash! You fell through the ice.' : player.outCause === 'chopped' ? 'Chopped down!' : "You're out! You were shot."}{' '}
           Back in your starting box in {Math.max(1, Math.ceil((player.respawnAt - state.now) / 1000))}s.
         </p> : null}
         {result && <p className="status" role="status">

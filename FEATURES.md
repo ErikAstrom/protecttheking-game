@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Sword
-- **Status:** in progress — Claude (Erik's session), 2026-11-19 15:40
-- **Requested by:** Erik
-- **Description:** Common pickup. Space draws the sword for 10 seconds; while it's out, it chops down any enemy non-king you touch or get within reach of, any number of times. Chopped players respawn in their starting box after 3 seconds (same as being shot). It does nothing to kings (normal capture rules still apply).
-- **Files:** new `src/sword.ts`, `src/sword.test.ts`, `src/swordfx.ts`; small hooks in `src/rules.ts` (item, tuning, player field, slash state), `src/game.ts` (activate, chop check), `src/arena.tsx` (draw hook), `src/client.tsx` (HUD).
-- **Notes:**
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -86,6 +79,14 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Sword
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** Common pickup. Space draws the sword for 10 seconds; while it's out, it chops down any enemy non-king you touch or get within reach of, any number of times. Chopped players respawn in their starting box after 3 seconds (same as being shot). It does nothing to kings (normal capture rules still apply).
+- **Files:** new `src/sword.ts`, `src/sword.test.ts`, `src/swordfx.ts`; small hooks in `src/rules.ts` (item, tuning, player field, slash state), `src/game.ts` (activate, chop check), `src/arena.tsx` (draw hook), `src/client.tsx` (HUD).
+- **Notes:**
+  - 2026-11-19 — Done in `Add sword`. 10 tests in `src/sword.test.ts` (reach rules, kings/teammates/dead immune, common pickup, 10 s duration, contact chops both ways in Classic and Ice, unlimited chops, respawn in box, king capture unchanged). Browser-verified on a private port: Space draws the sword (HUD timer + ring), sliding into an enemy hunter chopped it in 0.7 s with a CHOP! slash.
 
 ### Match pickup count to players by default
 - **Status:** done — 2026-11-19

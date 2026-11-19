@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReplayCue } from './audio.ts';
 import { boardOutline } from './board-shape.ts';
 import { drawHeldGun, drawShots } from './gunfx.ts';
+import { drawHeldSword, drawSlashes } from './swordfx.ts';
 import { drawBlackHole, drawStars } from './space-art.ts';
 import { drawOrca } from './orca.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
@@ -10,7 +11,7 @@ import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules
 import { levelAt, stairAxisAt, WALKWAY } from './walkway.ts';
 import { drawMovementTerrain } from './movement-terrain-art.ts';
 
-export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
+export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖', sword: '⚔' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
 const PORTAL_COLOR = '#d4adff';
 const CHARACTER_SCALE = 1.25;
@@ -19,7 +20,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'movementTerrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'movementTerrain' | 'players' | 'shots' | 'holes' | 'splashes' | 'slashes'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement } = board.settings;
@@ -237,6 +238,10 @@ function draw(
       actors.push({ depth: depth + 0.001, draw: () =>
         drawHeldGun(ctx, (x, y, height = 0) => project(x, y, height + z), { x, y }, holder.facing, holder.id === id, r) });
     }
+    if (!replay && holder && !holder.king && holder.swordUntil > scene.now) {
+      actors.push({ depth: depth + 0.001, draw: () => drawHeldSword(ctx, (x, y, height = 0) => project(x, y, height + z),
+        { x, y }, holder.facing, holder.swordUntil - scene.now, r, time) });
+    }
     actors.push({ depth, draw: () => {
       const p = project(x, y, z);
       const team = COLORS[player.team];
@@ -257,6 +262,7 @@ function draw(
   for (const actor of actors) actor.draw();
   if (!replay) drawShots(ctx, project, board.shots, scene.now, point => levelAt(walkway, point) * tierHeight);
   if (!replay) drawSplashes(ctx, project, board.splashes, scene.now);
+  if (!replay) drawSlashes(ctx, project, board.slashes, scene.now);
   if (replay) {
     for (const [participant, label, color] of [
       [replay.hunterId, 'HUNTER', '#b9fff4'], [replay.kingId, 'CAPTURED KING', '#ffe097'],

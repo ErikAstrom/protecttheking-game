@@ -68,9 +68,10 @@ export const ITEMS = {
   slow: { name: 'Slow trap', color: '#e3a8ff' },
   vault: { name: 'Vault', color: '#8de8ff' },
   gun: { name: 'Golden gun', color: '#ffd23f' },
+  sword: { name: 'Sword', color: '#d9e4ee' },
 } as const;
 /** Items used for opening pickups and ordinary respawns. The golden gun is rare and spawns separately (see GUN). */
-export const COMMON_ITEMS = ['strength', 'speed', 'slow', 'vault'] as const;
+export const COMMON_ITEMS = ['strength', 'speed', 'slow', 'vault', 'sword'] as const;
 export const ITEM_KINDS = [...COMMON_ITEMS, 'gun'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
@@ -79,6 +80,8 @@ export type Trap = Point & { team: Team; expires: number };
 export type Hole = Point & { radius: number };
 /** A brief splash where someone fell into the water, for drawing. */
 export type Splash = Point & { at: number };
+/** A sword chop, kept briefly so clients can draw the slash. */
+export type Slash = { from: Point; to: Point; at: number };
 export type BlackHole = Point & { expires: number };
 /** A golden gun shot, kept briefly so clients can draw the tracer. */
 export type Shot = { from: Point; to: Point; team: Team; at: number; hitId: string | null; stoppedBy: 'wall' | 'king' | 'player' | 'range' };
@@ -177,6 +180,15 @@ export const SPACE = {
   radius: 9, coreRadius: 1, maxPullPerMs: 0.006,
   spawnInset: 0.25, spawnAttempts: 16,
 } as const;
+// Sword (common item; see src/sword.ts).
+export const SWORD = {
+  /** How long the sword stays out after pressing Space. Unlimited chops meanwhile. */
+  activeMs: 10000,
+  /** Enemy non-kings this close (tile centres) are chopped. Body contact is ~0.88, so this reaches a little further. */
+  reachTiles: 1.15,
+  /** Out-of-play time for a chopped player, and how long the slash is drawn. */
+  respawnMs: 3000, slashMs: 400,
+} as const;
 export const REPLAY = { windowMs: 3000, sampleMs: 75, speed: 0.75, holdMs: 700 };
 export type Player = Point & {
   id: string; name: string; team: Team; king: boolean; strengthUntil: number;
@@ -184,6 +196,8 @@ export type Player = Point & {
   paceUntil: number; pace: 'speed' | 'slow' | null;
   inventory: ItemKind[]; collected: number; used: number; tripped: number;
   vaultUntil: number;
+  /** While > now, this player's sword is out. */
+  swordUntil: number;
   sprintReadyAt: number; recoilUntil: number; portalTrips: number;
   /** Last movement direction; golden gun shots go this way. */
   facing: Point;
@@ -191,7 +205,7 @@ export type Player = Point & {
   gunAmmo: number;
   /** While > 0 the player is dead and respawns at this time. */
   respawnAt: number;
-  outCause: 'shot' | 'drowned' | null;
+  outCause: 'shot' | 'drowned' | 'chopped' | null;
   kills: number; deaths: number;
   drop?: { at: number; from: number; to: number };
 };
@@ -215,7 +229,7 @@ export type State = {
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
-  portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; holes: Hole[]; splashes: Splash[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
+  portals: Point[]; terrain: TerrainPatch[]; shots: Shot[]; holes: Hole[]; splashes: Splash[]; slashes: Slash[]; result: Result | null; replay: CaptureReplay | null; notice: string | null;
 };
 export const roundStartsAt = (state: State) => state.deadline - state.settings.seconds * 1000;
 export type ServerMessage =

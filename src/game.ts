@@ -1,10 +1,11 @@
 import { BotPilot } from './bots.ts';
 import { boardOutline, onBoard } from './board-shape.ts';
 import { castShot } from './gun.ts';
+import { findChops } from './sword.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
 import { followsBoost, generateMovementTerrain, movementTerrainAt, terrainSpeed, TRAVERSAL } from './movement-terrain.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, SWORD, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
@@ -28,7 +29,7 @@ function makePlayer(id: string, name: string, team: Team): Player {
   return {
     id, name, team, x: 0, y: 0, king: false,
     strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-    sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0,
+    sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, swordUntil: 0,
     facing: homeFacing(team), gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
   };
 }
@@ -37,7 +38,7 @@ export class Game {
   readonly state: State = {
     blackHole: null, movementTerrain: [],
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [],
+    round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], slashes: [],
     result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
@@ -139,7 +140,7 @@ export class Game {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
       blackHole: null, movementTerrain: [],
       players: this.state.players.filter(player => !player.bot),
-      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], result: null, replay: null, notice,
+      obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], slashes: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
     this.bots.reset();
@@ -182,6 +183,7 @@ export class Game {
     player.used++;
     if (kind === 'strength') player.strengthUntil = now + TUNING.strengthMs;
     else if (kind === 'vault') player.vaultUntil = now + TUNING.vaultMs;
+    else if (kind === 'sword') player.swordUntil = now + SWORD.activeMs;
     else if (kind === 'speed') {
       player.pace = 'speed';
       player.paceUntil = now + TUNING.speedMs;
@@ -221,6 +223,7 @@ export class Game {
     this.state.traps = this.state.traps.filter(trap => trap.expires > now);
     this.state.shots = this.state.shots.filter(shot => now - shot.at < GUN.tracerMs);
     this.state.splashes = this.state.splashes.filter(splash => now - splash.at < HOLES.splashMs);
+    this.state.slashes = this.state.slashes.filter(slash => now - slash.at < SWORD.slashMs);
     for (const player of players) if (player.respawnAt && player.respawnAt <= now) this.respawn(player);
     for (let index = this.respawns.length - 1; index >= 0; index--) {
       if ((this.respawns[index] ?? Infinity) <= now && this.spawnPickup()) this.respawns.splice(index, 1);
@@ -268,6 +271,7 @@ export class Game {
       }
     }
     if (attemptedMove) this.turn++;
+    this.swingSwords(now);
     this.recordReplayFrame(now);
   }
 
@@ -357,7 +361,7 @@ export class Game {
     delete player.drop;
     Object.assign(player, {
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, swordUntil: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
       facing: homeFacing(player.team),
     });
   }
@@ -376,6 +380,7 @@ export class Game {
     state.result = null;
     state.shots = [];
     state.splashes = [];
+    state.slashes = [];
     state.replay = null;
     delete state.tilt;
     state.notice = null;
@@ -598,12 +603,12 @@ export class Game {
   }
 
   /** Takes a player out of play (shot or drowned) until `respawn` brings them back in their starting box. */
-  private takeOut(victim: Player, now: number, cause: 'shot' | 'drowned', ms: number): void {
+  private takeOut(victim: Player, now: number, cause: 'shot' | 'drowned' | 'chopped', ms: number): void {
     victim.deaths++;
     victim.respawnAt = now + ms;
     victim.outCause = cause;
     delete victim.drop;
-    Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0 });
+    Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0, swordUntil: 0 });
     this.velocities.delete(victim.id);
     this.laneBoostUntil.delete(victim.id);
   }
@@ -624,6 +629,34 @@ export class Game {
     });
     this.velocities.delete(player.id);
     this.nextMove.delete(player.id);
+  }
+
+  /** Bumping into someone with a sword out: the sword wins against enemy non-kings, either way round. */
+  private swordContact(player: Player, occupants: Player[], now: number): boolean {
+    if (player.king) return false;
+    const armed = (candidate: Player) => candidate.swordUntil > now;
+    const enemies = occupants.filter(candidate => candidate.team !== player.team && !candidate.king);
+    const victims = armed(player) ? enemies : [];
+    const chopper = !armed(player) ? enemies.find(armed) : undefined;
+    for (const victim of victims) this.chop(player, victim, now);
+    if (chopper) this.chop(chopper, player, now);
+    return victims.length > 0 || !!chopper;
+  }
+
+  /** Chops every enemy non-king within reach of a drawn sword. Runs once per tick after movement. */
+  private swingSwords(now: number): void {
+    if (this.state.phase !== 'playing') return;
+    for (const { chopperId, victimId } of findChops(this.state.players, now, SWORD.reachTiles)) {
+      const chopper = this.state.players.find(candidate => candidate.id === chopperId);
+      const victim = this.state.players.find(candidate => candidate.id === victimId);
+      if (chopper && victim && alive(chopper) && alive(victim)) this.chop(chopper, victim, now);
+    }
+  }
+
+  private chop(chopper: Player, victim: Player, now: number): void {
+    chopper.kills++;
+    this.state.slashes.push({ from: { x: chopper.x, y: chopper.y }, to: { x: victim.x, y: victim.y }, at: now });
+    this.takeOut(victim, now, 'chopped', SWORD.respawnMs);
   }
 
   private occupants(target: Point, player: Player, smooth: boolean): Player[] {
@@ -650,6 +683,7 @@ export class Game {
       this.end({ winner: hunter.team, reason: 'capture' });
       return false;
     }
+    if (this.swordContact(player, occupants, now)) return alive(player) && this.move(player, delta, now, smooth);
     const defender = occupants[0];
     if (defender) {
       if (occupants.length > 1 || defender.team === player.team || player.king || player.strengthUntil <= now ||
