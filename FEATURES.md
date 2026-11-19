@@ -51,6 +51,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:**
   - 2026-11-19 — Plan: a new "Ice" movement mode built on Smooth's fractional movement, with acceleration and low friction so turns drift. Physics goes in a new `src/ice.ts`, with small hooks in `game.ts`. Penguin/ocean visuals go in a new `src/penguin.ts`, with small hooks in `arena.tsx`. This should stay compatible with "Denser randomized arenas" (I won't touch wall generation).
 
+### Big-screen match viewer
+- **Status:** in progress — Copilot, 2026-11-19 12:57
+- **Requested by:** Host playtest
+- **Description:** Add a read-only host display for the live match without taking a player slot.
+- **Notes:** Reuse the arena and replays. Phone controllers are out of scope.
+
 ## Open
 
 _No open items._
