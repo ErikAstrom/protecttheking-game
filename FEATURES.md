@@ -91,7 +91,7 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Status:** done — 2026-11-19
 - **Requested by:** Playtest feedback
 - **Description:** Use upright red penguins and belly-sliding blue orcas in every world. Movement and hitboxes are unchanged.
-- **Notes:** Completed in `Use penguins and orcas in every world`. Verified both sprites in Penguin World, Castle Arena, and Rooms & Corridors.
+- **Notes:** Completed in `Use penguins and orcas in every world`. Verified both sprites in Penguin World, Castle Arena, Rooms & Corridors, and Space (with tilt and the black hole active together).
 
 ### Rooms & Corridors map
 - **Status:** done — 2026-11-19
