@@ -3,7 +3,7 @@ import { boardOutline, onBoard } from './board-shape.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TILT, TUNING, isFractional, matchStartError, roundStartsAt, surfaceAt, tiltSpeed } from './rules.ts';
+import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
@@ -119,6 +119,7 @@ export class Game {
 
   reset(notice: string | null = null): void {
     delete this.state.tilt;
+    delete this.state.outline;
     this.scheduledTilt = undefined;
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
@@ -186,9 +187,7 @@ export class Game {
         this.state.phase = 'playing';
         this.state.deadline = now + settings.seconds * 1000;
         if (settings.world === 'space') this.scheduleBlackHole(now);
-        const startedAt = now + settings.seconds * 1000 * (TILT.firstFraction + Math.random() * (TILT.lastFraction - TILT.firstFraction));
-        const downhill = [DIRECTIONS.up, DIRECTIONS.down, DIRECTIONS.left, DIRECTIONS.right][Math.floor(Math.random() * 4)]!;
-        this.scheduledTilt = { downhill, startedAt, endsAt: startedAt + TILT.durationMs };
+        this.scheduledTilt = scheduleTilt(settings, now);
         this.recordReplayFrame(now);
       }
       return;
@@ -270,7 +269,7 @@ export class Game {
     const base = player.paceUntil <= now ? TUNING.moveMs
       : player.pace === 'speed' ? TUNING.fastMoveMs : TUNING.slowMoveMs;
     const surface = surfaceAt(this.state.terrain, player);
-    return base * (surface ? SURFACES[surface].intervalFactor : 1) / tiltSpeed(this.state.tilt, direction);
+    return base * (surface ? SURFACES[surface].intervalFactor : 1) / tiltSpeed(this.state.tilt, direction, now);
   }
 
   private scheduleBlackHole(now: number): void {
@@ -346,7 +345,7 @@ export class Game {
     state.now = now;
     state.deadline = now + TUNING.roundCountdownMs + seconds * 1000;
     const layout = world === 'space' ? () => [] : world === 'rooms' ? generateRooms : world === 'penguin' ? generateIceSheet : generateArena;
-    this.outline = boardOutline(size, world);
+    this.outline = state.outline = boardOutline(size, world, Math.random());
     state.obstacles = (this.layout ?? layout)(size)
       .filter(obstacle => world === 'rooms' || world === 'space' || onBoard(this.outline, obstacle, Math.SQRT1_2));
     state.terrain = world === 'rooms' || world === 'space' ? [] : generateTerrain(size);

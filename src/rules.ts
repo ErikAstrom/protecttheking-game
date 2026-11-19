@@ -35,10 +35,26 @@ export function surfaceAt(terrain: readonly TerrainPatch[], point: Point) {
     point.y >= y - 0.5 && point.y < y + height - 0.5 && (!outline || insideTerrain(outline, point)))?.kind;
 }
 export type Tilt = { downhill: Point; startedAt: number; endsAt: number };
-export const TILT = { durationMs: 4000, firstFraction: 0.3, lastFraction: 0.5, speedGain: 0.32 } as const;
-export function tiltSpeed(tilt: Tilt | undefined, direction: Point | null): number {
+export const TILT = { rampMs: 1000, minimumLeadMs: 1000, firstFraction: 0.3, lastFraction: 0.5, speedGain: 0.32 } as const;
+export function scheduleTilt(settings: Settings, now: number, random = Math.random): Tilt | undefined {
+  const roundMs = settings.seconds * 1000;
+  const duration = settings.tiltSeconds * 1000;
+  const latest = Math.min(roundMs * TILT.lastFraction, roundMs - duration);
+  if (latest < TILT.minimumLeadMs || random() * 100 >= settings.tiltChance) return undefined;
+  const earliest = Math.min(latest, roundMs * TILT.firstFraction);
+  const startedAt = now + Math.round(earliest + random() * (latest - earliest));
+  const downhill = [DIRECTIONS.up, DIRECTIONS.down, DIRECTIONS.left, DIRECTIONS.right][Math.floor(random() * 4)]!;
+  return { downhill, startedAt, endsAt: startedAt + duration };
+}
+export function tiltAmount(tilt: Tilt | undefined, now: number): number {
+  if (!tilt) return 0;
+  const ramp = Math.min(TILT.rampMs, (tilt.endsAt - tilt.startedAt) / 2);
+  const fraction = Math.max(0, Math.min(1, (now - tilt.startedAt) / ramp, (tilt.endsAt - now) / ramp));
+  return fraction * fraction * (3 - 2 * fraction);
+}
+export function tiltSpeed(tilt: Tilt | undefined, direction: Point | null, now: number): number {
   if (!tilt || !direction) return 1;
-  return 1 + TILT.speedGain * (direction.x * tilt.downhill.x + direction.y * tilt.downhill.y) /
+  return 1 + tiltAmount(tilt, now) * TILT.speedGain * (direction.x * tilt.downhill.x + direction.y * tilt.downhill.y) /
     (Math.hypot(direction.x, direction.y) || 1);
 }
 export const ITEMS = {
@@ -70,7 +86,7 @@ export const isFractional = (movement: Movement) => movement !== 'classic';
 export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
   timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number; portalCount: number;
-  world: World; balanceBots: boolean;
+  world: World; balanceBots: boolean; tiltChance: number; tiltSeconds: number;
 };
 export const LIMITS = {
   teamSize: { min: 2, max: 8, initial: 4 },
@@ -79,12 +95,15 @@ export const LIMITS = {
   size: { min: 32, max: 256, initial: 48 },
   pickupCount: { min: 0, max: 40, initial: 14 },
   portalCount: { min: 0, max: 8, initial: 4 },
+  tiltChance: { min: 0, max: 100, initial: 50 },
+  tiltSeconds: { min: 1, max: 120, initial: 20 },
 } as const;
 export const DEFAULT_SETTINGS: Settings = {
   teamSize: LIMITS.teamSize.initial, seconds: LIMITS.seconds.initial,
   wins: LIMITS.wins.initial, size: LIMITS.size.initial, timeout: 'draw',
   movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalCount: LIMITS.portalCount.initial,
   world: 'penguin', balanceBots: false,
+  tiltChance: LIMITS.tiltChance.initial, tiltSeconds: LIMITS.tiltSeconds.initial,
 };
 export function matchStartError(settings: Settings, players: readonly Player[]): string | undefined {
   const counts = TEAMS.map(team => players.filter(player => player.team === team && !player.bot).length);
@@ -182,6 +201,7 @@ export type CaptureReplay = {
 export type State = {
   blackHole: BlackHole | null;
   tilt?: Tilt;
+  outline?: readonly Point[];
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];
@@ -205,7 +225,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function readSettings(value: unknown): Settings | null {
   if (!isRecord(value) || (value.timeout !== 'draw' && value.timeout !== 'proximity')) return null;
-  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world, balanceBots = false } = value;
+  const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world, balanceBots = false,
+    tiltChance = DEFAULT_SETTINGS.tiltChance, tiltSeconds = DEFAULT_SETTINGS.tiltSeconds } = value;
   function valid(key: keyof typeof LIMITS, n: unknown): n is number {
     const { min, max } = LIMITS[key];
     return typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
@@ -213,6 +234,8 @@ export function readSettings(value: unknown): Settings | null {
   return valid('teamSize', teamSize) && valid('seconds', seconds) &&
     valid('wins', wins) && valid('size', size) && valid('pickupCount', pickupCount) &&
     valid('portalCount', portalCount) && portalCount !== 1 &&
+    valid('tiltChance', tiltChance) && valid('tiltSeconds', tiltSeconds) &&
     typeof balanceBots === 'boolean' && MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
-    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World, balanceBots } : null;
+    ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World,
+      balanceBots, tiltChance, tiltSeconds } : null;
 }

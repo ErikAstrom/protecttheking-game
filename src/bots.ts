@@ -12,7 +12,7 @@ type Plan = { at: number; route: Point[]; goal: Point | undefined; portalTrips: 
 
 function routeTo(state: State, bot: Player, goal: Point, quarry?: Player): Point[] {
   const { size } = state.settings;
-  const outline = boardOutline(size, state.settings.world);
+  const outline = state.outline ?? boardOutline(size, state.settings.world);
   const clearance = isFractional(state.settings.movement) ? TUNING.smoothRadius : 0;
   const key = ({ x, y }: Point) => y * size + x;
   const start = key(tile(bot));
@@ -127,7 +127,7 @@ export class BotPilot {
       point => {
         const { x, y } = tile(point);
         const { size, world } = state.settings;
-        return !onBoard(boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
+        return !onBoard(state.outline ?? boardOutline(size, world), { x, y }) || state.obstacles.some(wall => wall.x === x && wall.y === y);
       },
       GUN.rangeTiles, GUN.stepTiles, GUN.hitRadius).hit;
   }

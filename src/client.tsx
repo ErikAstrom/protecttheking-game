@@ -26,6 +26,7 @@ const watching = location.pathname === '/watch' || location.pathname === '/watch
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
   ['wins', 'Points to win'], ['size', 'Board side'], ['pickupCount', 'Pickups on board'],
+  ['tiltChance', 'Tilt chance (%)'], ['tiltSeconds', 'Tilt duration (seconds)'],
 ] as const;
 const teleporterCounts = Array.from({ length: LIMITS.portalCount.max - LIMITS.portalCount.min + 1 },
   (_, index) => LIMITS.portalCount.min + index).filter(count => count !== 1);

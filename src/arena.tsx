@@ -4,7 +4,7 @@ import { boardOutline } from './board-shape.ts';
 import { drawHeldGun, drawShots } from './gunfx.ts';
 import { drawBlackHole, drawStars } from './space-art.ts';
 import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPenguinTerrain } from './penguin.ts';
-import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline } from './rules.ts';
+import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State, Team } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
@@ -16,15 +16,15 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'outline' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement, world } = board.settings;
   const penguin = world === 'penguin';
   const space = world === 'space';
   const scale = 914 / size;
-  const tilt = scene.tilt;
-  const angle = tilt ? Math.min(1, Math.max(0, (scene.now - tilt.startedAt) / 180)) : 0;
+  const tilt = scene.tilt ?? next.tilt;
+  const angle = tiltAmount(tilt, scene.now + (next.now - scene.now) * fraction);
   function project(x: number, y: number, z = 0): Point {
     const depth = (y + 0.5) / size;
     const across = (x + 0.5 - size / 2) * scale * (0.83 + depth * 0.17);
@@ -74,7 +74,7 @@ function draw(
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   if (space) drawStars(ctx, WIDTH, HEIGHT);
-  const outline = boardOutline(size, world).map(({ x, y }) => project(x, y));
+  const outline = (board.outline ?? boardOutline(size, world)).map(({ x, y }) => project(x, y));
   if (penguin) {
     drawIceFloe(ctx, project, size, WIDTH, HEIGHT, time, outline);
     ctx.save();

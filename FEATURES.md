@@ -112,6 +112,7 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Requested by:** Playtest feedback
 - **Description:** Non-square arenas, irregular mirrored terrain, and a brief tilt event with directional speed changes and an opt-in musical cue.
 - **Notes:** Completed in `Shape arenas and add a sudden tilt event`. Verified movement in all three modes and the direction announcement in the live viewer.
+  - Follow-up: `Vary arena outlines and make tilt configurable` adds a new mirrored outline each round and configurable tilt odds and duration (50% and 20 seconds by default), with easing and no tilt in rounds that cannot fit it.
 
 ### Clear team badges
 - **Status:** done — 2026-11-19
