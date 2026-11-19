@@ -59,6 +59,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** `src/audio.ts`, `src/audio.test.ts`
 - **Notes:** Provide `GameAudio.cue('golden-gun-spawn')` and `GameAudio.cue('golden-gun-pickup')`; leave gameplay and event wiring to the Golden Gun feature.
 
+### Visible size boost for Strength
+- **Status:** in progress — Copilot, 2026-11-19 13:15
+- **Requested by:** Playtest feedback
+- **Description:** Make players visibly larger while Strength is active without changing hitboxes.
+- **Files:** `src/arena.tsx`, `README.md`, `AGENTS.md`
+
 ## Open
 
 _No open items._
