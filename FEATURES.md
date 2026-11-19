@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Arena movement features
+- **Status:** in progress — Copilot, 2026-11-19 14:14
+- **Requested by:** Playtest feedback
+- **Description:** Add climbable icebergs, rubble mounds, directional conveyors, and Space boost lanes.
+- **Files:** `src/game.ts`, `src/rules.ts`, `src/arena.tsx`, and dedicated terrain modules (no changes to Rooms wall generation).
+
 ### Denser Rooms & Corridors layouts
 - **Status:** in progress — Copilot, 2026-11-19 14:08
 - **Requested by:** Playtest feedback
