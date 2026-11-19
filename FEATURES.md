@@ -51,6 +51,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Make players visibly larger while Strength is active without changing hitboxes.
 - **Files:** `src/arena.tsx`, `README.md`, `AGENTS.md`
 
+### Single item slot and Vault pickup
+- **Status:** in progress — Copilot, 2026-11-19 13:16
+- **Requested by:** Playtest feedback
+- **Description:** Keep the held item when touching another pickup. Add a Vault item that skips one wall or player on the next eligible collision within five seconds of activation.
+- **Files:** `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/arena.tsx`, new focused item tests
+- **Notes:** Require a clear landing; preserve king capture. Coordinate collision and landing checks with Water holes in the ice.
+
 ## Open
 
 ### Wire golden gun and splash sounds
