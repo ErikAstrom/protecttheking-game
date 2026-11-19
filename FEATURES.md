@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Classes (replace most power-ups)
+- **Status:** in progress — Claude (Erik's session), 2026-11-19 16:55
+- **Requested by:** Erik
+- **Description:** Every player picks a class in the lobby; Space uses its ability. Hunter: sprint like the king. Bodyguard: passive Strength. Wizard: freeze bolt (1.5 s cooldown). Strategist: vault over walls. Spy: invisible for a few seconds. Remove all power-ups except Sword and Golden gun; those two activate on pickup for 10 s and auto-hit/auto-shoot, so players keep their class ability.
+- **Files:** big change: `src/rules.ts`, `src/game.ts`, `src/bots.ts`, `src/server.ts`, `src/client.tsx`, `src/arena.tsx`, `src/penguin.ts`, `src/gun.ts`; new `src/classes.ts`, `src/classes.test.ts`; rewrites tests for removed items (`vault`, `gun`, `sword`, `items-setting`, `game`, `bots`). **Please avoid item/inventory/trap code until this lands.**
+- **Notes:**
+
 ## Open
 
 ### Wire golden gun and splash sounds
