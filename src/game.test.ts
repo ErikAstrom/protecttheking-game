@@ -12,6 +12,7 @@ function setup(overrides: Partial<Settings> = {}, game = new Game(() => [{ x: 10
   startActiveRound(game, 1000);
   game.state.terrain = [];
   game.state.holes = [];
+  game.state.movementTerrain = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
   return { game, redKing, blueKing, red, blue };

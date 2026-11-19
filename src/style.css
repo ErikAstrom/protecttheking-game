@@ -87,3 +87,8 @@ kbd { border: 1px solid #7f9aaf; border-radius: 0.28rem; padding: 0.12rem 0.26re
 .gun { color: #ffd23f; }
 .status.out { border-color: #ff737b; color: #ffd6d9; }
 .sword { color: #d9e4ee; }
+.power-ups { margin: 0.75rem 0 0; border: 1px solid #405470; border-radius: 0.5rem; padding: 0.5rem 0.75rem; display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; }
+.power-ups legend { padding: 0 0.3rem; font-weight: 700; }
+.power-ups .check { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+.power-ups input { width: 1.05rem; height: 1.05rem; margin: 0; }
+.power-ups .hint { flex-basis: 100%; margin: 0.2rem 0 0; font-size: 0.85rem; color: #a9bdc9; }

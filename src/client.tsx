@@ -95,6 +95,22 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
         </select>
       </label>
     </div>
+    <fieldset className="power-ups">
+      <legend>Power-ups in this match</legend>
+      {ITEM_KINDS.map(kind => <label key={kind} className={`check ${kind}`}>
+        <input type="checkbox" checked={draft.items.includes(kind)} onChange={event => setDraft({
+          ...draft,
+          items: event.currentTarget.checked ? ITEM_KINDS.filter(item => item === kind || draft.items.includes(item))
+            : draft.items.filter(item => item !== kind),
+        })} />
+        <span aria-hidden="true">{GLYPHS[kind]}</span> {ITEMS[kind].name}{kind === 'gun' ? ' (rare)' : ''}
+      </label>)}
+      <p className="hint">
+        {!draft.items.length ? 'No power-ups: the board stays empty.'
+          : draft.items.length === 1 && draft.items[0] === 'gun' ? 'Golden gun only: one gun on the board at a time.'
+          : `${draft.items.length} of ${ITEM_KINDS.length} power-ups enabled.`}
+      </p>
+    </fieldset>
     <button>Apply settings</button>
   </form>;
 }

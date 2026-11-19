@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Choose available power-ups
-- **Status:** in progress — Claude (Erik's session), 2026-11-19 16:20
-- **Requested by:** Erik
-- **Description:** Lobby checkboxes for which power-ups can appear in a match (Strength, Speed, Slow trap, Vault, Sword, Golden gun). Only checked ones spawn.
-- **Files:** `src/rules.ts` (Settings.items, defaults, readSettings), `src/game.ts` (pickup spawning), `src/client.tsx` (lobby checkboxes), new `src/items-setting.test.ts`.
-- **Notes:**
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -86,6 +79,14 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Choose available power-ups
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** Lobby checkboxes for which power-ups can appear in a match (Strength, Speed, Slow trap, Vault, Sword, Golden gun). Only checked ones spawn.
+- **Files:** `src/rules.ts` (Settings.items, defaults, readSettings), `src/game.ts` (pickup spawning), `src/client.tsx` (lobby checkboxes), new `src/items-setting.test.ts`.
+- **Notes:**
+  - 2026-11-19 — Done in `Add power-up selection to lobby settings`. 6 tests in `src/items-setting.test.ts`. Browser-verified: unticking 4 boxes and applying stored `[vault, sword]` on the server. Also pinned `movementTerrain` in all test setups; random movement terrain was making `portals work both ways…` flaky.
 
 ### Sword
 - **Status:** done — 2026-11-19

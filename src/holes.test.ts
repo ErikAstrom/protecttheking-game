@@ -45,6 +45,7 @@ function match(options: { movement?: Movement; world?: World; holes?: Hole[] } =
   for (const id of ['r1', 'b1', 'r2', 'b2']) assert.equal(game.join(id, id), undefined);
   startActiveRound(game, 1000);
   game.state.terrain = [];
+  game.state.movementTerrain = [];
   const [redKing, blueKing, red, blue] = game.state.players;
   assert.ok(redKing && blueKing && red && blue);
   let now = 1000;

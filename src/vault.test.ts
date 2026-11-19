@@ -59,6 +59,7 @@ test('unsafe landings preserve the charge, which expires after five seconds', ()
   assert.equal(red.x, 10, 'cannot land in a water hole');
   assert.equal(red.vaultUntil, 1000 + TUNING.vaultMs);
   game.state.holes = [];
+  game.state.movementTerrain = [];
   game.tick(red.vaultUntil);
   assert.equal(red.x, 10, 'the deadline itself is already expired');
 });

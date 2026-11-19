@@ -95,6 +95,8 @@ export type Settings = {
   teamSize: number; seconds: number; wins: number; size: number;
   timeout: 'draw' | 'proximity'; movement: Movement; pickupCount: number | null; portalCount: number;
   world: World; randomWorld: boolean; balanceBots: boolean; tiltChance: number; tiltSeconds: number;
+  /** Power-ups that can appear this match (lobby checkboxes). Empty = no pickups at all. */
+  items: ItemKind[];
 };
 export const LIMITS = {
   teamSize: { min: 2, max: 8, initial: 4 },
@@ -112,6 +114,7 @@ export const DEFAULT_SETTINGS: Settings = {
   movement: 'ice', pickupCount: LIMITS.pickupCount.initial, portalCount: LIMITS.portalCount.initial,
   world: 'penguin', randomWorld: false, balanceBots: false,
   tiltChance: LIMITS.tiltChance.initial, tiltSeconds: LIMITS.tiltSeconds.initial,
+  items: [...ITEM_KINDS],
 };
 export function matchStartError(settings: Settings, players: readonly Player[]): string | undefined {
   const counts = TEAMS.map(team => players.filter(player => player.team === team && !player.bot).length);
@@ -250,7 +253,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function readSettings(value: unknown): Settings | null {
   if (!isRecord(value) || (value.timeout !== 'draw' && value.timeout !== 'proximity')) return null;
   const { teamSize, seconds, wins, size, timeout, movement, pickupCount, portalCount, world, randomWorld = false, balanceBots = false,
-    tiltChance = DEFAULT_SETTINGS.tiltChance, tiltSeconds = DEFAULT_SETTINGS.tiltSeconds } = value;
+    tiltChance = DEFAULT_SETTINGS.tiltChance, tiltSeconds = DEFAULT_SETTINGS.tiltSeconds, items = DEFAULT_SETTINGS.items } = value;
   function valid(key: keyof typeof LIMITS, n: unknown): n is number {
     const { min, max } = LIMITS[key];
     return typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
@@ -260,7 +263,17 @@ export function readSettings(value: unknown): Settings | null {
     valid('portalCount', portalCount) && portalCount !== 1 &&
     valid('tiltChance', tiltChance) && valid('tiltSeconds', tiltSeconds) &&
     typeof randomWorld === 'boolean' && typeof balanceBots === 'boolean' &&
-    MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world)
+    MOVEMENTS.some(mode => mode === movement) && WORLDS.some(option => option === world) && validItems(items)
     ? { teamSize, seconds, wins, size, timeout, movement: movement as Movement, pickupCount, portalCount, world: world as World,
-      randomWorld, balanceBots, tiltChance, tiltSeconds } : null;
+      randomWorld, balanceBots, tiltChance, tiltSeconds, items: ITEM_KINDS.filter(kind => items.includes(kind)) } : null;
+}
+
+function validItems(items: unknown): items is ItemKind[] {
+  return Array.isArray(items) && items.length <= ITEM_KINDS.length &&
+    items.every(item => ITEM_KINDS.some(kind => kind === item)) && new Set(items).size === items.length;
+}
+
+/** The ordinary (non-rare) power-ups enabled for this match, in rotation order. */
+export function enabledCommonItems(settings: Pick<Settings, 'items'>): ItemKind[] {
+  return COMMON_ITEMS.filter(kind => settings.items.includes(kind));
 }

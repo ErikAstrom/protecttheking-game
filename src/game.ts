@@ -5,7 +5,7 @@ import { findChops } from './sword.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
 import { followsBoost, generateMovementTerrain, movementTerrainAt, terrainSpeed, TRAVERSAL } from './movement-terrain.ts';
-import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, SWORD, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
+import { DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, SWORD, TEAMS, TUNING, WORLDS, enabledCommonItems, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
 import { generateIceSheet } from './icesheet.ts';
@@ -440,31 +440,35 @@ export class Game {
       state.portals.push(portal);
       if (mirrored) state.portals.push(mirror(portal, size));
     }
-    const pickupCount = state.settings.pickupCount ?? state.players.length;
+    // Only the lobby's ticked power-ups appear. With just the golden gun ticked, one gun at a time is on the board.
+    const pool = enabledCommonItems(state.settings);
+    const gunOnly = !pool.length && state.settings.items.includes('gun');
+    const pickupCount = pool.length ? state.settings.pickupCount ?? state.players.length : gunOnly ? 1 : 0;
     const pairs = Math.floor(pickupCount / 2);
     for (let index = 0; index < pairs; index++) {
-      if (!this.spawnPickup(COMMON_ITEMS[index % COMMON_ITEMS.length], true)) {
+      if (!this.spawnPickup(pool[index % pool.length], true)) {
         this.scheduleRespawn(roundStartsAt(state));
         this.scheduleRespawn(roundStartsAt(state));
       }
     }
-    if (pickupCount % 2 && !this.spawnPickup(COMMON_ITEMS[pairs % COMMON_ITEMS.length])) {
+    if (pickupCount % 2 && !this.spawnPickup(pool[pairs % pool.length] ?? 'gun')) {
       this.scheduleRespawn(roundStartsAt(state));
     }
   }
 
   private spawnPickup(kind?: ItemKind, paired = false): boolean {
     const { settings, pickups } = this.state;
+    const pool = enabledCommonItems(settings);
+    const gunAllowed = !kind && settings.items.includes('gun') && !pickups.some(pickup => pickup.kind === 'gun');
+    const item = kind ?? (gunAllowed && (!pool.length || Math.random() < GUN.spawnChance) ? 'gun'
+      : pool[Math.floor(Math.random() * pool.length)]);
+    if (!item) return false;
     const point = this.findSpawn(point => {
       if (!this.spawnOpen(point)) return false;
       const partner = mirror(point, settings.size);
       return !paired || (this.spawnOpen(partner) && distance(point, partner) >= TUNING.pickupSpacing);
     });
     if (!point) return false;
-    const gunAllowed = !kind && !pickups.some(pickup => pickup.kind === 'gun');
-    const randomKind = gunAllowed && Math.random() < GUN.spawnChance ? 'gun'
-      : COMMON_ITEMS[Math.floor(Math.random() * COMMON_ITEMS.length)] ?? 'strength';
-    const item = kind ?? randomKind;
     pickups.push({ ...point, kind: item });
     if (paired) pickups.push({ ...mirror(point, settings.size), kind: item });
     return true;

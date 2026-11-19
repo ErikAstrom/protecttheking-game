@@ -24,6 +24,7 @@ function iceGame() {
   startActiveRound(game, 1000);
   game.state.terrain = [];
   game.state.holes = [];
+  game.state.movementTerrain = [];
   const red = game.state.players[2];
   assert.ok(red);
   Object.assign(red, { x: 20, y: 40 });
