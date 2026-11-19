@@ -133,6 +133,7 @@ Newest first. One line each: date — decision — why.
 - 2026-11-19 — A king who falls into a water hole respawns in their box and nobody scores — Erik asked that falling in means dying and respawning; change `takeOut` callers if drowning a king should give the other team a point.
 - 2026-11-19 — Give Penguin world its own open ice-sheet layout (few chunky icebergs) and default to a 48 board; Castle keeps the dense walls — the owner wants open ice to slide on with bigger walls and units, and the dense layout stays useful for comparison. This relaxes "worlds are visual only" to cover layouts.
 - 2026-11-19 — Golden gun aims where you last moved (no mouse aiming) and kings absorb shots — keeps controls keyboard-only and the capture-the-king goal intact; kings can shield teammates.
+- 2026-11-19 — Use distinct, original synthesized stings for the Golden Gun spawn and pickup — players can tell the two events apart without licensed recordings.
 - 2026-11-19 — Make Penguin world with Ice movement the default and keep Castle/Smooth/Classic selectable — the owner wants a slippery penguin game, and the other modes stay useful for playtest comparison.
 - 2026-11-19 — Give the big-screen viewer a read-only connection so observing never consumes a player slot or grants lobby controls.
 - 2026-11-19 — Add local ice and quicksand without changing Classic steering or requiring players to cross a hazardous surface.

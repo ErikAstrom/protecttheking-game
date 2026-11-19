@@ -1,10 +1,31 @@
 export type ReplayCue = 'replay-start' | 'replay-impact';
-type Cue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent' | ReplayCue;
-const CUES: Record<Cue, number[]> = {
+type StandardCue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent' | ReplayCue;
+type GoldenGunCue = 'golden-gun-spawn' | 'golden-gun-pickup';
+type Cue = StandardCue | GoldenGunCue;
+
+const CUES: Record<StandardCue, number[]> = {
   pickup: [72, 79, 84], use: [60, 67, 76], trap: [56, 49, 44],
   round: [55, 60, 67, 72], capture: [60, 64, 67, 76], timeout: [62, 57, 55], urgent: [72, 72],
   'replay-start': [55, 48, 41],
   'replay-impact': [38, 74],
+};
+type CueNote = [midi: number, delay: number, duration: number, volume: number, wave: OscillatorType];
+const GOLDEN_GUN_CUES: Record<GoldenGunCue, CueNote[]> = {
+  'golden-gun-spawn': [
+    [42, 0, 0.29, 0.10, 'sine'],
+    [54, 0, 0.13, 0.07, 'sawtooth'],
+    [61, 0.14, 0.12, 0.07, 'sawtooth'],
+    [57, 0.27, 0.38, 0.08, 'sawtooth'],
+    [66, 0.27, 0.32, 0.05, 'triangle'],
+    [42, 0.27, 0.34, 0.08, 'sine'],
+  ],
+  'golden-gun-pickup': [
+    [85, 0, 0.05, 0.045, 'square'],
+    [69, 0.045, 0.17, 0.08, 'triangle'],
+    [74, 0.115, 0.18, 0.08, 'triangle'],
+    [78, 0.185, 0.32, 0.09, 'triangle'],
+    [97, 0.185, 0.22, 0.035, 'sine'],
+  ],
 };
 const TUNE = [60, 67, 69, 67, 64, 67, 62, 67, 60, 64, 67, 72, 69, 64, 62, 67,
   57, 64, 67, 64, 60, 64, 62, 64, 55, 62, 65, 67, 65, 62, 59, 62];
@@ -56,9 +77,16 @@ export class GameAudio {
 
   cue(cue: Cue) {
     if (this.context.state !== 'running') return;
+    const start = this.context.currentTime + 0.02;
+    if (cue === 'golden-gun-spawn' || cue === 'golden-gun-pickup') {
+      for (const [midi, delay, duration, volume, wave] of GOLDEN_GUN_CUES[cue]) {
+        this.note(midi, start + delay, duration, volume, wave, this.context.destination);
+      }
+      return;
+    }
     const impact = cue === 'replay-impact';
     CUES[cue].forEach((midi, index) =>
-      this.note(midi, this.context.currentTime + 0.02 + index * (impact ? 0.03 : 0.085),
+      this.note(midi, start + index * (impact ? 0.03 : 0.085),
         impact ? 0.24 : 0.16, 0.09, impact && index === 0 ? 'sine' : 'triangle', this.context.destination));
   }
 

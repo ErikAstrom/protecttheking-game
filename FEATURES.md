@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Golden Gun sound cues
-- **Status:** in progress — Copilot, 2026-11-19 13:06
-- **Requested by:** Playtest feedback
-- **Description:** Prepare original retro spy-style cues for the Golden Gun appearing and being collected.
-- **Files:** `src/audio.ts`, `src/audio.test.ts`
-- **Notes:** Provide `GameAudio.cue('golden-gun-spawn')` and `GameAudio.cue('golden-gun-pickup')`; leave gameplay and event wiring to the Golden Gun feature.
-
 ### Visible size boost for Strength
 - **Status:** in progress — Copilot, 2026-11-19 13:15
 - **Requested by:** Playtest feedback
@@ -95,6 +88,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:**
   - 2026-11-19 — Plan: shots go in the direction you last moved, stop at obstacles, pass through teammates, and are blocked (harmlessly) by kings. Rare: only appears on respawns, at a small chance, with at most one on the board.
   - 2026-11-19 — Done in `Add golden gun with death and respawn`. 11 tests in `src/gun.test.ts` (hit rules, teammates, kings, walls/range, 3 shots then gone, facing, respawn in box for Classic and Ice, dead players can't act or count, rarity). Browser-verified 2v2: HUD shows ammo, held gun + aim line, tracer and SHOT! flash, victim vanishes and respawns in blue's box. Death/respawn is reusable for water holes. No sound yet (claimed separately as "Golden Gun sound cues").
+
+### Golden Gun sound cues
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Prepare original retro spy-style cues for the Golden Gun appearing and being collected.
+- **Files:** `src/audio.ts`, `src/audio.test.ts`
+- **Notes:** Prepared in `Add original Golden Gun sound cues`. Call `GameAudio.cue('golden-gun-spawn')` and `GameAudio.cue('golden-gun-pickup')` from the Golden Gun feature's live event handling. The cues require sound opt-in and use no recordings.
 
 ### Random-exit teleporters and larger characters
 - **Status:** done — 2026-11-19
