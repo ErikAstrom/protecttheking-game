@@ -12,7 +12,7 @@ const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y;
  * - Holding the opposite direction brakes at the acceleration rate (you skid before reversing).
  * - With no input you glide and slowly come to rest.
  */
-export function iceVelocity(velocity: Point, direction: Point | null, topSpeed: number, elapsed: number): Point {
+export function iceVelocity(velocity: Point, direction: Point | null, topSpeed: number, elapsed: number, gripMs: number = ICE.gripMs): Point {
   if (elapsed <= 0) return velocity;
   if (!direction || (!direction.x && !direction.y)) {
     const keep = Math.exp(-elapsed / ICE.glideMs);
@@ -27,7 +27,7 @@ export function iceVelocity(velocity: Point, direction: Point | null, topSpeed: 
   const nextAlong = along <= topSpeed
     ? Math.min(topSpeed, along + accel)
     : Math.max(topSpeed, along - accel * ICE.overspeedBleed);
-  const grip = Math.exp(-elapsed / ICE.gripMs);
+  const grip = Math.exp(-elapsed / gripMs);
   return { x: unit.x * nextAlong + sideways.x * grip, y: unit.y * nextAlong + sideways.y * grip };
 }
 

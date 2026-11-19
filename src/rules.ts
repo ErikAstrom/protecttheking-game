@@ -8,6 +8,7 @@ export const DIRECTIONS = {
 } satisfies Record<string, Point>;
 export type Direction = keyof typeof DIRECTIONS;
 import type { Walkway } from './walkway.ts';
+import type { MovementTerrain } from './movement-terrain.ts';
 
 export type Point = { x: number; y: number };
 export type Obstacle = Point & { kind: 'wall' | 'crate' | 'pillar' };
@@ -210,6 +211,7 @@ export type State = {
   tilt?: Tilt;
   outline?: readonly Point[];
   walkway?: Walkway;
+  movementTerrain: MovementTerrain[];
   host: string | null; phase: 'lobby' | 'countdown' | 'playing' | 'between' | 'finished';
   settings: Settings; score: Record<Team, number>; round: number;
   deadline: number; now: number; players: Player[]; obstacles: Obstacle[]; pickups: Pickup[]; traps: Trap[];

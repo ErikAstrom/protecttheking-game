@@ -3,6 +3,7 @@ import { boardOutline, onBoard } from './board-shape.ts';
 import { castShot } from './gun.ts';
 import { generateHoles, inHole } from './holes.ts';
 import { afterSlide, iceVelocity } from './ice.ts';
+import { followsBoost, generateMovementTerrain, movementTerrainAt, terrainSpeed, TRAVERSAL } from './movement-terrain.ts';
 import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, HOLES, ICE, REPLAY, SPACE, SURFACES, TEAMS, TUNING, WORLDS, isFractional, matchStartError, roundStartsAt, scheduleTilt, surfaceAt, tiltSpeed } from './rules.ts';
 import type { Direction, Hole, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team, Tilt } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
@@ -30,7 +31,7 @@ function makePlayer(id: string, name: string, team: Team): Player {
 
 export class Game {
   readonly state: State = {
-    blackHole: null,
+    blackHole: null, movementTerrain: [],
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
     round: 0, deadline: 0, now: 0, players: [], obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [],
     result: null, replay: null, notice: null,
@@ -40,6 +41,7 @@ export class Game {
   private readonly nextMove = new Map<string, number>();
   private readonly nextPush = new Map<string, number>();
   private readonly gravityProgress = new Map<string, number>();
+  private readonly laneBoostUntil = new Map<string, number>();
   private nextBlackHoleAt = 0;
   private readonly respawns: number[] = [];
   private readonly replayFrames: ReplayFrame[] = [];
@@ -126,7 +128,7 @@ export class Game {
     this.scheduledTilt = undefined;
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
-      blackHole: null,
+      blackHole: null, movementTerrain: [],
       players: this.state.players.filter(player => !player.bot),
       obstacles: [], pickups: [], traps: [], portals: [], terrain: [], shots: [], holes: [], splashes: [], result: null, replay: null, notice,
     });
@@ -136,6 +138,7 @@ export class Game {
     this.nextMove.clear();
     this.nextPush.clear();
     this.gravityProgress.clear();
+    this.laneBoostUntil.clear();
     this.respawns.length = 0;
     this.replayFrames.length = 0;
     for (const player of this.state.players) {
@@ -224,21 +227,25 @@ export class Game {
         if (action.useItem) this.useItem(player.id, now);
       }
       const direction = this.inputs.get(player.id);
+      const delta = direction ? DIRECTIONS[direction] : null;
       if (settings.movement === 'ice') {
         if (player.recoilUntil > now) continue;
-        attemptedMove = this.glide(player, direction ? DIRECTIONS[direction] : null, elapsed, now) || attemptedMove;
+        if (delta) this.refreshLaneBoost(player, delta, now);
+        attemptedMove = this.glide(player, delta, elapsed, now) || attemptedMove;
         if (this.state.phase !== 'playing') return;
         continue;
       }
-      if (!direction || player.recoilUntil > now || (this.nextMove.get(player.id) ?? 0) > now) continue;
+      if (!delta || player.recoilUntil > now || (this.nextMove.get(player.id) ?? 0) > now) continue;
       attemptedMove = true;
-      const delta = DIRECTIONS[direction];
+      this.refreshLaneBoost(player, delta, now);
       const interval = this.moveInterval(player, now, delta);
       if (settings.movement === 'smooth') {
         this.steer(player, delta, interval, elapsed, now);
       } else {
-        this.move(player, delta, now, false);
-        this.nextMove.set(player.id, now + this.moveInterval(player, now, delta));
+        const from = { x: player.x, y: player.y };
+        const moved = this.move(player, delta, now, false);
+        if (moved) this.refreshLaneBoost(player, delta, now);
+        this.nextMove.set(player.id, now + this.moveInterval(player, now, delta, moved ? offset(from, delta, 0.5) : from));
       }
       if (this.state.phase !== 'playing') return;
     }
@@ -269,11 +276,21 @@ export class Game {
     while ((this.replayFrames[0]?.now ?? now) < now - REPLAY.windowMs) this.replayFrames.shift();
   }
 
-  private moveInterval(player: Player, now: number, direction: Point | null): number {
+  private moveInterval(player: Player, now: number, direction: Point | null, terrainPoint: Point = player): number {
     const base = player.paceUntil <= now ? TUNING.moveMs
       : player.pace === 'speed' ? TUNING.fastMoveMs : TUNING.slowMoveMs;
     const surface = surfaceAt(this.state.terrain, player);
-    return base * (surface ? SURFACES[surface].intervalFactor : 1) / tiltSpeed(this.state.tilt, direction, now);
+    const patch = movementTerrainAt(this.state.movementTerrain, terrainPoint);
+    const boost = (this.laneBoostUntil.get(player.id) ?? 0) > now &&
+      (patch?.kind !== 'boost' || (direction && followsBoost(patch, direction)));
+    return base * (surface ? SURFACES[surface].intervalFactor : 1) /
+      (tiltSpeed(this.state.tilt, direction, now) * terrainSpeed(patch, terrainPoint, direction) * (boost ? TRAVERSAL.boostSpeed : 1));
+  }
+
+  private refreshLaneBoost(player: Player, direction: Point, now: number): void {
+    if (followsBoost(movementTerrainAt(this.state.movementTerrain, player), direction)) {
+      this.laneBoostUntil.set(player.id, now + TRAVERSAL.boostMs);
+    }
   }
 
   private scheduleBlackHole(now: number): void {
@@ -367,6 +384,11 @@ export class Game {
     state.holes = world === 'penguin' ? this.holeLayout(size, state.obstacles)
       .filter(hole => onBoard(this.outline, hole, hole.radius)) : [];
     this.blocked = new Set(state.obstacles.map(tileKey));
+    state.movementTerrain = generateMovementTerrain(size, world, this.outline, point =>
+      this.blocked.has(tileKey(point)) || levelAt(state.walkway, point) > 0 ||
+      Boolean(surfaceAt(state.terrain, point)) || inHole(state.holes, point, -1));
+    if (!state.movementTerrain.length) state.notice = 'No clear space for paired movement shortcuts this round.';
+    this.laneBoostUntil.clear();
     this.inputs.clear();
     this.bots.reset();
     this.velocities.clear();
@@ -437,7 +459,7 @@ export class Game {
   private spawnOpen(point: Point): boolean {
     const { settings, pickups, players, portals } = this.state;
     return !this.isBlocked(point, isFractional(settings.movement)) && !inHole(this.state.holes, point, -TUNING.pickupSpacing) &&
-      !levelAt(this.state.walkway, point) &&
+      !levelAt(this.state.walkway, point) && !movementTerrainAt(this.state.movementTerrain, point) &&
       [...pickups, ...players, ...portals]
         .every(other => distance(other, point) >= TUNING.pickupSpacing);
   }
@@ -484,7 +506,8 @@ export class Game {
     if (last) {
       const highSpeed = Math.max(targetSpeed, Math.hypot(last.x, last.y)) > 1 / TUNING.moveMs + Number.EPSILON;
       const surface = surfaceAt(this.state.terrain, player);
-      const turnMs = Math.max(highSpeed ? TUNING.smoothFastTurnMs : TUNING.smoothTurnMs,
+      const rubble = movementTerrainAt(this.state.movementTerrain, player)?.kind === 'rubble';
+      const turnMs = rubble ? TRAVERSAL.rubbleTurnMs : Math.max(highSpeed ? TUNING.smoothFastTurnMs : TUNING.smoothTurnMs,
         surface ? SURFACES[surface].turnMs : 0);
       const retention = Math.exp(-elapsed / turnMs);
       velocity = {
@@ -509,7 +532,8 @@ export class Game {
     const last = this.velocities.get(player.id) ?? { x: 0, y: 0 };
     if (elapsed <= 0 || (!direction && !last.x && !last.y)) return false;
     const topSpeed = ICE.topSpeedScale / this.moveInterval(player, now, direction);
-    const velocity = iceVelocity(last, direction, topSpeed, elapsed);
+    const rubble = movementTerrainAt(this.state.movementTerrain, player)?.kind === 'rubble';
+    const velocity = iceVelocity(last, direction, topSpeed, elapsed, rubble ? TRAVERSAL.rubbleGripMs : undefined);
     const { x, y, portalTrips, vaultUntil } = player;
     this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);
     if (!alive(player)) return true;
@@ -572,6 +596,7 @@ export class Game {
     delete victim.drop;
     Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0 });
     this.velocities.delete(victim.id);
+    this.laneBoostUntil.delete(victim.id);
   }
 
   /** Brings a shot player back in their team's starting box, on the first free tile near the middle of it. */

@@ -45,12 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Arena movement features
-- **Status:** in progress — Copilot, 2026-11-19 14:14
-- **Requested by:** Playtest feedback
-- **Description:** Add climbable icebergs, rubble mounds, directional conveyors, and Space boost lanes.
-- **Files:** `src/game.ts`, `src/rules.ts`, `src/arena.tsx`, and dedicated terrain modules (no changes to Rooms wall generation).
-
 ### Sword
 - **Status:** in progress — Claude (Erik's session), 2026-11-19 15:40
 - **Requested by:** Erik
@@ -116,6 +110,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Requested by:** Playtest feedback
 - **Description:** Add more randomized rooms, distinct corridors, and connected raised routes.
 - **Notes:** Implemented in `Add denser Rooms and Corridors layouts`. The standard board now has eight two-exit rooms, corridors at least three tiles wide, and a connected upper route with a third staircase near mid-map.
+
+### Arena movement features
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Add walkable icebergs, grippy rubble mounds, directional conveyors, and Space boost lanes.
+- **Notes:** Implemented in `Add walkable movement features to each arena`. Places mirrored pairs clear of existing hazards and obstacles.
 
 ### Stronger and more frequent Space hazards
 - **Status:** done — 2026-11-19

@@ -8,6 +8,7 @@ import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPe
 import { ITEMS, REPLAY, TUNING, isFractional, terrainOutline, tiltAmount } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 import { levelAt, stairAxisAt, WALKWAY } from './walkway.ts';
+import { drawMovementTerrain } from './movement-terrain-art.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
@@ -18,7 +19,7 @@ const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'roundWorld' | 'outline' | 'walkway' | 'obstacles' | 'portals' | 'terrain' | 'movementTerrain' | 'players' | 'shots' | 'holes' | 'splashes'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement } = board.settings;
@@ -132,6 +133,7 @@ function draw(
     polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
     ctx.restore();
   }
+  for (const patch of board.movementTerrain) drawMovementTerrain(ctx, project, patch);
   if (space && scene.blackHole) drawBlackHole(ctx, project, scene.blackHole, time);
   for (const [index, point] of board.portals.entries()) {
     const p = project(point.x, point.y);
