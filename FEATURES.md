@@ -45,6 +45,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Round start countdown
+- **Status:** in progress — Copilot, 2026-11-19 13:26
+- **Requested by:** Playtest feedback
+- **Description:** Show a synchronized three-second countdown before every round on player screens and `/watch`. Freeze play until GO, then start the full round timer.
+- **Files:** `src/game.ts`, `src/rules.ts`, `src/server.ts`, `src/client.tsx`, `src/style.css`, focused countdown tests and existing game test setup.
+- **Notes:** Reuse the round-start sound cue on GO; leave movement, collisions, and items unchanged during play.
+
 ### Single item slot and Vault pickup
 - **Status:** in progress — Copilot, 2026-11-19 13:16
 - **Requested by:** Playtest feedback
