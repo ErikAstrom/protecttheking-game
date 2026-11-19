@@ -1,6 +1,8 @@
+import type { Shot } from './rules.ts';
+
 export type ReplayCue = 'replay-start' | 'replay-impact';
 type StandardCue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent' | ReplayCue;
-type GoldenGunCue = 'golden-gun-spawn' | 'golden-gun-pickup';
+type GoldenGunCue = 'golden-gun-spawn' | 'golden-gun-pickup' | 'golden-gun-fire';
 type Cue = StandardCue | GoldenGunCue;
 
 const CUES: Record<StandardCue, number[]> = {
@@ -26,10 +28,30 @@ const GOLDEN_GUN_CUES: Record<GoldenGunCue, CueNote[]> = {
     [78, 0.185, 0.32, 0.09, 'triangle'],
     [97, 0.185, 0.22, 0.035, 'sine'],
   ],
+  'golden-gun-fire': [
+    [35, 0, 0.10, 0.12, 'sine'],
+    [45, 0, 0.065, 0.075, 'sawtooth'],
+    [90, 0, 0.045, 0.065, 'square'],
+    [73, 0.038, 0.12, 0.04, 'triangle'],
+    [88, 0.07, 0.15, 0.024, 'sine'],
+  ],
 };
 const TUNE = [60, 67, 69, 67, 64, 67, 62, 67, 60, 64, 67, 72, 69, 64, 62, 67,
   57, 64, 67, 64, 60, 64, 62, 64, 55, 62, 65, 67, 65, 62, 59, 62];
 const BASS = [48, 48, 45, 43];
+
+export function newShotCount(previous: readonly Shot[], current: readonly Shot[]): number {
+  // Tracers persist across snapshots, and multiple shots can share a timestamp.
+  const remaining = new Map<number, number>();
+  for (const { at } of previous) remaining.set(at, (remaining.get(at) ?? 0) + 1);
+  let count = 0;
+  for (const { at } of current) {
+    const seen = remaining.get(at) ?? 0;
+    if (seen) remaining.set(at, seen - 1);
+    else count++;
+  }
+  return count;
+}
 
 export class GameAudio {
   private readonly context = new AudioContext();
@@ -78,7 +100,7 @@ export class GameAudio {
   cue(cue: Cue) {
     if (this.context.state !== 'running') return;
     const start = this.context.currentTime + 0.02;
-    if (cue === 'golden-gun-spawn' || cue === 'golden-gun-pickup') {
+    if (cue === 'golden-gun-spawn' || cue === 'golden-gun-pickup' || cue === 'golden-gun-fire') {
       for (const [midi, delay, duration, volume, wave] of GOLDEN_GUN_CUES[cue]) {
         this.note(midi, start + delay, duration, volume, wave, this.context.destination);
       }

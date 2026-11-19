@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { GameAudio } from './audio.ts';
+import { GameAudio, newShotCount } from './audio.ts';
+import type { Shot } from './rules.ts';
+
+test('only new shot events make a sound, even when two shots share a timestamp', () => {
+  const first: Shot = { from: { x: 1, y: 1 }, to: { x: 1, y: 5 }, team: 'red', at: 20, hitId: null, stoppedBy: 'range' };
+  const second: Shot = { ...first, team: 'blue' };
+  const third: Shot = { ...first, at: 25 };
+  assert.equal(newShotCount([], [first]), 1);
+  assert.equal(newShotCount([first], [{ ...first }]), 0);
+  assert.equal(newShotCount([first], [first, second, third]), 2);
+  assert.equal(newShotCount([first, second, third], [third]), 0);
+});
 
 class TestOscillator {
   type: OscillatorType = 'sine';
@@ -49,12 +60,14 @@ test('Golden Gun cues are distinct, bounded, and respect opt-in sound', async t 
   }
   const spawn = play('golden-gun-spawn');
   const pickup = play('golden-gun-pickup');
+  const fire = play('golden-gun-fire');
   const regular = play('pickup');
   assert.ok(spawn.some(voice => voice.type === 'sawtooth' && voice.frequency.value < 250));
   assert.ok(pickup.some(voice => voice.type === 'square' && voice.frequency.value > 800));
   assert.notDeepEqual(pickup.map(voice => voice.frequency.value), regular.map(voice => voice.frequency.value));
+  assert.ok(fire.some(voice => voice.type === 'sine' && voice.frequency.value < 80));
 
   await audio.mute();
-  audio.cue('golden-gun-pickup');
+  audio.cue('golden-gun-fire');
   assert.equal(oscillators.length, 0, 'a muted cue must not schedule sound');
 });

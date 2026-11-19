@@ -92,9 +92,9 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 ### Golden Gun sound cues
 - **Status:** done — 2026-11-19
 - **Requested by:** Playtest feedback
-- **Description:** Prepare original retro spy-style cues for the Golden Gun appearing and being collected.
-- **Files:** `src/audio.ts`, `src/audio.test.ts`
-- **Notes:** Prepared in `Add original Golden Gun sound cues`. Call `GameAudio.cue('golden-gun-spawn')` and `GameAudio.cue('golden-gun-pickup')` from the Golden Gun feature's live event handling. The cues require sound opt-in and use no recordings.
+- **Description:** Add original retro spy-style cues for the Golden Gun spawning, being collected, and firing.
+- **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/client.tsx`
+- **Notes:** Prepared in `Add original Golden Gun sound cues` and wired in `Play Golden Gun cues during live matches`. Spawn and firing are audible to sound-enabled players and spectators; pickup is only audible to the collector. No recordings are used.
 
 ### Random-exit teleporters and larger characters
 - **Status:** done — 2026-11-19

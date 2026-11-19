@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Arena, GLYPHS } from './arena.tsx';
-import { GameAudio } from './audio.ts';
+import { GameAudio, newShotCount } from './audio.ts';
 import type { ReplayCue } from './audio.ts';
 import { GUN, ITEMS, ITEM_KINDS, LIMITS, MOVEMENTS, SURFACES, TEAMS, WORLDS, isFractional, surfaceAt } from './rules.ts';
 import type { Command, Direction, Movement, ServerMessage, Settings, State, World } from './rules.ts';
@@ -222,12 +222,24 @@ function App() {
     if (!connected || !state || !previous || state === previous) return;
     if (state.phase === 'playing' && previous.phase !== 'playing') engine.cue('round');
     if (state.result && !previous.result) engine.cue(state.result.reason);
+    if (previous.phase === 'playing' && state.round === previous.round) {
+      const shots = newShotCount(previous.shots, state.shots);
+      for (let shot = 0; shot < shots; shot++) engine.cue('golden-gun-fire');
+    }
     if (state.phase === 'playing' && state.round === previous.round) {
+      if (previous.phase === 'playing' && state.pickups.some(item => item.kind === 'gun') &&
+          !previous.pickups.some(item => item.kind === 'gun')) {
+        engine.cue('golden-gun-spawn');
+      }
       const local = state.players.find(member => member.id === id);
       const old = previous.players.find(member => member.id === id);
       if (local && old) {
-        if (local.collected > old.collected) engine.cue('pickup');
-        if (local.used > old.used) engine.cue('use');
+        if (local.collected > old.collected) {
+          const pickedUpGun = local.inventory.filter(item => item === 'gun').length >
+            old.inventory.filter(item => item === 'gun').length;
+          engine.cue(pickedUpGun ? 'golden-gun-pickup' : 'pickup');
+        }
+        if (local.used > old.used && old.inventory[0] !== 'gun') engine.cue('use');
         if (local.tripped > old.tripped) engine.cue('trap');
       }
       if (state.deadline - state.now <= 10000 && previous.deadline - previous.now > 10000) engine.cue('urgent');
