@@ -62,6 +62,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 ## 4. Repo structure
 
+- `FEATURES.md` — shared feature/task board: ideas, claims, progress notes, done list.
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
 - `src/server.ts` — HTTP host and WebSocket command handling.
@@ -78,6 +79,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 ## 6. How agents should work here
 
 1. Read this file, then the relevant code, before changing anything.
+   - **Feature work goes through [`FEATURES.md`](FEATURES.md).** Pull, claim an open item (commit and push the claim) *before* coding, leave notes while you work, and move it to Done when finished. Follow the rules at the top of that file so concurrent agents don't build the same thing. If you're asked to build something that isn't listed, add it and claim it first.
 2. Make the smallest change that solves the task. No drive-by refactors.
 3. Run `npm test` and `npm run build`, then `npm start` for the LAN host.
 4. Never commit secrets, API keys, or large binary assets without approval.
@@ -87,6 +89,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 ## 7. Definition of done
 
 - The feature works when the game is run, not just in theory.
+- Its entry in `FEATURES.md` is moved to Done with a short note.
 - Tests (once they exist) pass.
 - This spec is updated if behavior, structure, or commands changed.
 
@@ -100,6 +103,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Track features in a shared FEATURES.md with push-to-claim — so concurrent agents don't duplicate work.
 - 2026-11-19 — Give Smooth turns more inertia at higher speed, but stop on key release so players can still plant themselves at chokepoints.
 - 2026-11-19 — Add numbered portal pairs and mover-only recoil so portals create shortcuts without weakening stationary bodyguards; give kings a rechargeable sprint instead of pickups.
 - 2026-11-19 — Record capture replays on the host so all players can see the same lead-up without affecting scoring or round transitions.

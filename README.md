@@ -30,3 +30,6 @@ The first player to join controls the lobby. Both teams must fill before startin
 - The lobby host starts the next round. The wall layout is fixed; opening pickup pairs are mirrored and respawns are independent. A player disconnect returns the match to the lobby.
 
 `npm test` runs the game-rule tests. Re-run `npm run build` and restart the host after changes.
+## Contributing
+
+Ideas and work in progress live in [`FEATURES.md`](FEATURES.md). Add a feature there, and an agent (or person) claims it before building it. AI agents should read [`AGENTS.md`](AGENTS.md) first.
