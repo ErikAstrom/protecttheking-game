@@ -58,13 +58,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** `src/arena.tsx`, `src/penguin.ts`, `src/client.tsx`, `README.md`, `AGENTS.md`
 - **Notes:** Shared visual marker only; no gameplay or hitbox changes.
 
-### Golden Gun fanfare and king water loss
-- **Status:** in progress — Copilot, 2026-11-19 13:30
-- **Requested by:** Playtest feedback
-- **Description:** Give the Golden Gun a bigger, distinct musical cue. If a king falls into water, immediately award the opposing team one point and end the round.
-- **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/holes.test.ts`
-- **Notes:** Preserve normal respawns for non-kings and the normal match point target.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -99,6 +92,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Notes:** Validate access server-side before sending private match snapshots, including to viewers, and rate-limit failed code attempts. Keep `/watch` read-only.
 
 ## Done
+
+### Golden Gun fanfare and king water loss
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Give the Golden Gun a bigger, distinct musical cue. If a king falls into water, immediately award the opposing team one point and end the round.
+- **Files:** `src/audio.ts`, `src/audio.test.ts`, `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/holes.test.ts`
+- **Notes:** Completed in `Make Golden Gun fanfares bigger and score king falls`. Non-kings still respawn normally. A king's fall only ends the match when the point reaches the configured target.
 
 ### Round start countdown
 - **Status:** done — 2026-11-19

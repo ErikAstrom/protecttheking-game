@@ -1,32 +1,35 @@
 import type { Shot } from './rules.ts';
 
 export type ReplayCue = 'replay-start' | 'replay-impact';
-type StandardCue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent' | ReplayCue;
+type StandardCue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'king-drowned' | 'urgent' | ReplayCue;
 type GoldenGunCue = 'golden-gun-spawn' | 'golden-gun-pickup' | 'golden-gun-fire';
 type Cue = StandardCue | GoldenGunCue;
 
 const CUES: Record<StandardCue, number[]> = {
   pickup: [72, 79, 84], use: [60, 67, 76], trap: [56, 49, 44],
   round: [55, 60, 67, 72], capture: [60, 64, 67, 76], timeout: [62, 57, 55], urgent: [72, 72],
+  'king-drowned': [65, 56, 41],
   'replay-start': [55, 48, 41],
   'replay-impact': [38, 74],
 };
 type CueNote = [midi: number, delay: number, duration: number, volume: number, wave: OscillatorType];
 const GOLDEN_GUN_CUES: Record<GoldenGunCue, CueNote[]> = {
   'golden-gun-spawn': [
-    [42, 0, 0.29, 0.10, 'sine'],
-    [54, 0, 0.13, 0.07, 'sawtooth'],
-    [61, 0.14, 0.12, 0.07, 'sawtooth'],
-    [57, 0.27, 0.38, 0.08, 'sawtooth'],
-    [66, 0.27, 0.32, 0.05, 'triangle'],
-    [42, 0.27, 0.34, 0.08, 'sine'],
+    [35, 0, 0.42, 0.15, 'sine'], [47, 0, 0.24, 0.09, 'sawtooth'],
+    [59, 0.14, 0.20, 0.11, 'sawtooth'], [62, 0.33, 0.20, 0.12, 'sawtooth'],
+    [65, 0.52, 0.31, 0.12, 'sawtooth'], [38, 0.52, 0.32, 0.14, 'sine'],
+    [62, 0.82, 0.15, 0.10, 'sawtooth'], [57, 0.97, 0.16, 0.10, 'sawtooth'],
+    [35, 1.16, 0.88, 0.18, 'sine'], [47, 1.16, 0.72, 0.08, 'sawtooth'],
+    [62, 1.16, 0.78, 0.08, 'triangle'], [66, 1.16, 0.78, 0.08, 'sawtooth'],
+    [71, 1.16, 0.84, 0.10, 'sawtooth'], [95, 1.16, 0.58, 0.04, 'sine'],
   ],
   'golden-gun-pickup': [
     [85, 0, 0.05, 0.045, 'square'],
-    [69, 0.045, 0.17, 0.08, 'triangle'],
-    [74, 0.115, 0.18, 0.08, 'triangle'],
-    [78, 0.185, 0.32, 0.09, 'triangle'],
-    [97, 0.185, 0.22, 0.035, 'sine'],
+    [47, 0.05, 0.23, 0.13, 'sine'], [66, 0.05, 0.17, 0.09, 'sawtooth'],
+    [71, 0.17, 0.18, 0.10, 'sawtooth'], [74, 0.30, 0.24, 0.10, 'sawtooth'],
+    [47, 0.52, 0.58, 0.14, 'sine'], [66, 0.52, 0.47, 0.08, 'triangle'],
+    [74, 0.52, 0.47, 0.08, 'triangle'], [83, 0.52, 0.56, 0.09, 'sawtooth'],
+    [95, 0.52, 0.44, 0.045, 'sine'],
   ],
   'golden-gun-fire': [
     [35, 0, 0.10, 0.12, 'sine'],
@@ -39,6 +42,8 @@ const GOLDEN_GUN_CUES: Record<GoldenGunCue, CueNote[]> = {
 const TUNE = [60, 67, 69, 67, 64, 67, 62, 67, 60, 64, 67, 72, 69, 64, 62, 67,
   57, 64, 67, 64, 60, 64, 62, 64, 55, 62, 65, 67, 65, 62, 59, 62];
 const BASS = [48, 48, 45, 43];
+const MUSIC_LEVEL = 0.42;
+const FANFARE_MUSIC_LEVEL = 0.09;
 
 export function newShotCount(previous: readonly Shot[], current: readonly Shot[]): number {
   // Tracers persist across snapshots, and multiple shots can share a timestamp.
@@ -59,7 +64,7 @@ export class GameAudio {
   private timer: number | undefined;
 
   constructor() {
-    this.music.gain.value = 0.42;
+    this.music.gain.value = MUSIC_LEVEL;
     this.music.connect(this.context.destination);
   }
 
@@ -83,7 +88,7 @@ export class GameAudio {
     let index = 0;
     const beat = 0.25;
     let next = this.context.currentTime + 0.06;
-    this.music.gain.setTargetAtTime(0.42, this.context.currentTime, 0.025);
+    this.music.gain.setTargetAtTime(MUSIC_LEVEL, this.context.currentTime, 0.025);
     const schedule = () => {
       if (next < this.context.currentTime) next = this.context.currentTime + 0.06;
       while (next < this.context.currentTime + 0.16) {
@@ -101,7 +106,14 @@ export class GameAudio {
     if (this.context.state !== 'running') return;
     const start = this.context.currentTime + 0.02;
     if (cue === 'golden-gun-spawn' || cue === 'golden-gun-pickup' || cue === 'golden-gun-fire') {
-      for (const [midi, delay, duration, volume, wave] of GOLDEN_GUN_CUES[cue]) {
+      const notes = GOLDEN_GUN_CUES[cue];
+      if (cue !== 'golden-gun-fire' && this.timer !== undefined) {
+        const end = Math.max(...notes.map(([, delay, duration]) => delay + duration));
+        this.music.gain.cancelScheduledValues(start);
+        this.music.gain.setTargetAtTime(FANFARE_MUSIC_LEVEL, start, 0.03);
+        this.music.gain.setTargetAtTime(MUSIC_LEVEL, start + end, 0.11);
+      }
+      for (const [midi, delay, duration, volume, wave] of notes) {
         this.note(midi, start + delay, duration, volume, wave, this.context.destination);
       }
       return;
@@ -116,6 +128,7 @@ export class GameAudio {
     if (this.timer === undefined) return;
     window.clearInterval(this.timer);
     this.timer = undefined;
+    this.music.gain.cancelScheduledValues(this.context.currentTime);
     this.music.gain.setTargetAtTime(0, this.context.currentTime, 0.025);
   }
 

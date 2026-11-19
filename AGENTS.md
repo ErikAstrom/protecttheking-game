@@ -35,7 +35,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 
 ### Win / lose conditions
 - Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
-- A capture gives the winner one point. On timeout, the host can choose a draw or compare the number of opposing non-kings within five tiles of each king; equal counts draw.
+- A capture gives the winner one point. When a king falls through the ice, the opposing team immediately wins the round and earns one point. On timeout, the host can choose a draw or compare the number of opposing non-kings within five tiles of each king; equal counts draw.
 - First team to the configured point target wins. The lobby host starts each round. The server counts down three seconds with players and bots frozen, then enables movement and items and starts the full round timer. Player screens and `/watch` show the same countdown.
 - After a capture, players get an instant replay of up to three seconds of server-recorded action at 75% speed, with start and impact cues when sound is enabled. Playback is local and skippable and doesn't hold up the next round. Timeouts don't generate replays.
 
@@ -46,7 +46,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 | Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
 | Pickups | Modify movement or collision | One held item per player; touching other pickups leaves them on the board. Strength lasts six seconds, refreshes without stacking, and draws the character 25% larger without changing collisions. Speed lasts four seconds. A deployed slow trap expires after 20 seconds or on first enemy contact, slowing them for three seconds. Vault arms one automatic hop over a wall or player for five seconds, provided the landing is clear. Capture and a successful strength push take priority. |
 | Golden gun | Rare weapon | Never an opening pickup: each pickup respawn has an 8% chance to be a gun, with at most one gun on the board. While it is the first queued item, Space fires a shot in the direction the holder last moved (3 shots, then it leaves the queue). Shots travel up to 14 tiles, stop at obstacles, pass through teammates, and are absorbed harmlessly by kings of either team: **kings can never be shot**. A shot enemy non-king is out of play (invisible, not solid, can't act, not counted for timeout proximity) and respawns in their team's 7×5 starting box after 3 seconds. Logic in `src/gun.ts` + `Game.fireGun/respawn`; tuning in `GUN`; drawing in `src/gunfx.ts`. |
-| Water holes | Hazard (Penguin world only) | Mirrored pairs of round holes in open ice (3 pairs on the default 48 board), clear of starting boxes, obstacles and the board edge. Anyone — kings included — whose centre slides 0.25 tiles past the rim falls in: a splash, out of play for 3 seconds, then respawn in their starting box. No points are scored for drowning (not even a king). Strength pushes can shove enemies in. Pickups and teleporters never spawn in or next to water. Logic in `src/holes.ts` + `Game.enter/takeOut`; tuning in `HOLES`; drawing in `drawHoles`/`drawSplashes` in `src/penguin.ts`. |
+| Water holes | Hazard (Penguin world only) | Mirrored pairs of round holes in open ice (3 pairs on the default 48 board), clear of starting boxes, obstacles and the board edge. Anyone whose centre slides 0.25 tiles past the rim falls in. Non-kings splash and respawn in their starting box after 3 seconds; a king's fall immediately ends the round. Strength pushes can shove enemies in. Pickups and teleporters never spawn in or next to water. Logic in `src/holes.ts` + `Game.enter/takeOut`; tuning in `HOLES`; drawing in `drawHoles`/`drawSplashes` in `src/penguin.ts`. |
 | Portals | Offer random escape routes | Off or 2–8 teleporters, four by default. Each entry picks a random unoccupied exit other than the entrance. |
 | Terrain | Offers risky shortcuts | Mirrored patches of quicksand slow movement; ice speeds it up and widens Smooth turns only. Grass and cobblestone are neutral. In Ice movement, terrain changes top speed, so slush drags a sliding penguin down gradually rather than stopping it. |
 
@@ -133,10 +133,11 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — A king falling into water now awards the opposing team one point and ends the round instead of allowing a respawn, so kings can't use water as an escape.
+- 2026-11-19 — Give the Golden Gun original brass-and-bass fanfares with temporary background music ducking, so its spawn and pickup stand out from routine cues.
 - 2026-11-19 — Count down before every round on the host so all players can see the new arena and start on equal footing.
 - 2026-11-19 — Add opt-in bots to the smaller team at match start, keeping kings human, so uneven groups can play without moving anyone.
 - 2026-11-19 — Replace the FIFO queue with a single item slot, and grant Vault one safe hop within five seconds — keep pickups available to others and preserve body-blocking and capture.
-- 2026-11-19 — A king who falls into a water hole respawns in their box and nobody scores — Erik asked that falling in means dying and respawning; change `takeOut` callers if drowning a king should give the other team a point.
 - 2026-11-19 — Give Penguin world its own open ice-sheet layout (few chunky icebergs) and default to a 48 board; Castle keeps the dense walls — the owner wants open ice to slide on with bigger walls and units, and the dense layout stays useful for comparison. This relaxes "worlds are visual only" to cover layouts.
 - 2026-11-19 — Golden gun aims where you last moved (no mouse aiming) and kings absorb shots — keeps controls keyboard-only and the capture-the-king goal intact; kings can shield teammates.
 - 2026-11-19 — Use distinct, synthesized cues for Golden Gun spawn, pickup, and firing — broadcast spawn and confirmed shots as arena cues, and notify only the collector on pickup.

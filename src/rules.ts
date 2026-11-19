@@ -142,7 +142,7 @@ export type Player = Point & {
   outCause: 'shot' | 'drowned' | null;
   kills: number; deaths: number;
 };
-export type Result = { winner: Team | null; reason: 'capture' | 'timeout' };
+export type Result = { winner: Team | null; reason: 'capture' | 'timeout' | 'king-drowned' };
 export type ReplayFrame = {
   now: number; pickups: Pickup[]; traps: Trap[];
   players: Pick<Player, 'id' | 'team' | 'king' | 'x' | 'y' | 'strengthUntil' | 'paceUntil' | 'pace' |

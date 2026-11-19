@@ -10,6 +10,9 @@ const MOVEMENT_LABELS: Record<Movement, string> = {
   ice: 'Ice (slippery momentum)', smooth: 'Smooth (8 directions)', classic: 'Classic (tiles)',
 };
 const WORLD_LABELS: Record<World, string> = { penguin: 'Penguin world (ice floe)', arena: 'Castle arena' };
+const RESULT_LABELS = {
+  capture: 'king captured', timeout: 'time expired', 'king-drowned': 'king fell through the ice',
+} satisfies Record<NonNullable<State['result']>['reason'], string>;
 import './style.css';
 
 const keys = new Map<string, Direction>([
@@ -134,7 +137,7 @@ function Viewer({ state, connected, error, soundControl, onReplayCue }: {
         </div>
       </section>
       {inLobby ? <p className="viewer-wait" role="status">{state.notice ?? 'Waiting for the lobby host to start the match.'}</p> : <>
-        {status && <p className="status" role="status">{status} — {result?.reason === 'capture' ? 'king captured' : 'time expired'}.</p>}
+        {status && result && <p className="status" role="status">{status} — {RESULT_LABELS[result.reason]}.</p>}
         <div className="viewer-board round-board">
           <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id="" onReplayCue={onReplayCue} />
           <RoundCountdown state={state} />
@@ -351,13 +354,13 @@ function App() {
             {surface ? ` · ${penguin ? (surface === 'ice' ? 'Black ice' : 'Slush') : SURFACES[surface].label}` : ''}
           </span> : <span>Spectating until the match ends</span>}
         </section>
-        {player?.respawnAt ? <p className="status out" role="status">
+        {player?.respawnAt && state.phase === 'playing' ? <p className="status out" role="status">
           {player.outCause === 'drowned' ? 'Splash! You fell through the ice.' : "You're out! You were shot."}{' '}
           Back in your starting box in {Math.max(1, Math.ceil((player.respawnAt - state.now) / 1000))}s.
         </p> : null}
         {result && <p className="status" role="status">
           {result.winner ? `${result.winner === 'red' ? 'Red' : 'Blue'} wins the ${state.phase === 'finished' ? 'match' : 'round'}` : 'Round drawn'}
-          {' — '}{result.reason === 'capture' ? 'king captured' : 'time expired'}.
+          {' — '}{RESULT_LABELS[result.reason]}.
         </p>}
         {host && state.phase === 'between' && <button onClick={() => send({ type: 'next' })}>Next round</button>}
         {host && state.phase === 'finished' && <button onClick={() => send({ type: 'reset' })}>Back to lobby</button>}
@@ -383,7 +386,7 @@ function App() {
         </div>
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
           <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Teleporters: random clear exit</span>}
-          {penguin && state.holes.length > 0 && <span>Open water: fall in and you're out for 3s</span>}
+          {penguin && state.holes.length > 0 && <span>Open water: king loses the round; others respawn in 3s</span>}
           <span className="ice">{penguin ? 'Black ice' : 'Ice'}: faster{smooth ? ', wider turns' : ''}</span><span className="sand">{penguin ? 'Slush' : 'Quicksand'}: slower</span>
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}

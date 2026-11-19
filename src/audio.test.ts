@@ -55,13 +55,15 @@ test('Golden Gun cues are distinct, bounded, and respect opt-in sound', async t 
     audio.cue(cue);
     const voices = oscillators.splice(0);
     assert.ok(voices.length > 0);
-    assert.ok(voices.every(voice => voice.startAt >= 10 && voice.stopAt > voice.startAt && voice.stopAt < 11));
+    assert.ok(voices.every(voice => voice.startAt >= 10 && voice.stopAt > voice.startAt && voice.stopAt < 12.5));
     return voices;
   }
   const spawn = play('golden-gun-spawn');
   const pickup = play('golden-gun-pickup');
   const fire = play('golden-gun-fire');
   const regular = play('pickup');
+  const duration = (voices: TestOscillator[]) => Math.max(...voices.map(voice => voice.stopAt)) - 10;
+  assert.ok(duration(spawn) >= 1.8 && duration(pickup) >= 0.9 && duration(fire) < 0.3);
   assert.ok(spawn.some(voice => voice.type === 'sawtooth' && voice.frequency.value < 250));
   assert.ok(pickup.some(voice => voice.type === 'square' && voice.frequency.value > 800));
   assert.notDeepEqual(pickup.map(voice => voice.frequency.value), regular.map(voice => voice.frequency.value));

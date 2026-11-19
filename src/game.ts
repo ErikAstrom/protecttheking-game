@@ -566,7 +566,7 @@ export class Game {
     for (let index = 0; index < steps; index++) {
       const target = offset(player, delta, scale);
       if (this.isBlocked(target, smooth) || this.occupants(target, player, smooth).length) break;
-      if (this.stepTo(player, target, now, smooth)) break;
+      if (this.stepTo(player, target, now, smooth) || !alive(player)) break;
     }
     return false;
   }
@@ -603,6 +603,7 @@ export class Game {
     if (inHole(this.state.holes, player)) {
       this.state.splashes.push({ x: player.x, y: player.y, at: now });
       this.takeOut(player, now, 'drowned', HOLES.respawnMs);
+      if (player.king) this.end({ winner: opposite(player.team), reason: 'king-drowned' });
     }
   }
 

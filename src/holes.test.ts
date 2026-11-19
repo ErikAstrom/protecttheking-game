@@ -87,16 +87,28 @@ test('the rim is forgiving: brushing the edge is safe', () => {
   assert.equal(red.respawnAt, 0, 'passing two tiles from the centre of a radius-2 hole is safe');
 });
 
-test('kings fall in too and respawn in their box; nobody scores', () => {
+test('a king falling in immediately ends the round and awards the other team one point', () => {
   const { game, blueKing, run } = match();
   Object.assign(blueKing, { x: 36, y: 30 });
   run(blueKing.id, 'left', 1500);
   assert.equal(blueKing.outCause, 'drowned');
-  assert.deepEqual(game.state.score, { red: 0, blue: 0 });
-  assert.equal(game.state.phase, 'playing');
+  assert.deepEqual(game.state.score, { red: 1, blue: 0 });
+  assert.deepEqual(game.state.result, { winner: 'red', reason: 'king-drowned' });
+  assert.equal(game.state.phase, 'between');
+  assert.equal(game.state.replay, null);
   run(blueKing.id, null, HOLES.respawnMs);
-  const size = game.state.settings.size;
-  assert.ok(blueKing.x >= size - 7 && blueKing.y >= size - 5, 'king back in blue box');
+  assert.equal(blueKing.outCause, 'drowned');
+  assert.deepEqual(game.state.score, { red: 1, blue: 0 });
+});
+
+test('a king falling in on match point ends the match', () => {
+  const { game, redKing, run } = match({ movement: 'classic' });
+  game.state.score.blue = game.state.settings.wins - 1;
+  Object.assign(redKing, { x: 28, y: 30 });
+  run(redKing.id, 'right', 100);
+  assert.deepEqual(game.state.result, { winner: 'blue', reason: 'king-drowned' });
+  assert.equal(game.state.score.blue, game.state.settings.wins);
+  assert.equal(game.state.phase, 'finished');
 });
 
 test('a strength push can shove an enemy into the water', () => {

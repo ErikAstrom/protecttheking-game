@@ -32,6 +32,8 @@ For uneven teams, set **Balance teams with bots** to **On** and choose **Apply s
 - Blue **Vault** arms one automatic hop for five seconds. Hit a wall or a player with room to land on the other side and you'll hop over them. A blocked landing doesn't spend the charge, and enemy king contact still scores normally. The Golden Gun holds the slot until its last shot.
 - Collected pickups return after roughly 2.5–6.5 seconds at new random positions with randomly chosen types. The item slot resets each round.
 - Select **Enable sound** for the procedural soundtrack and game cues; the browser needs that click to start audio.
+- The **Golden Gun** announces its spawn with a brass fanfare. The collector hears a shorter flourish, and shots keep a quick metallic cue.
+- If a king falls through the ice, the other team immediately wins the round and earns one point. Other players who fall in respawn after three seconds.
 - When time expires, either nobody scores (**Draw**) or the team with more non-kings within five tiles of the opposing king earns a point (**Proximity**). Equal counts are a draw.
 - Captures replay the last three seconds at ¾ speed, highlighting the hunter, king, and contact point. With sound enabled, a rewind cue marks the start and an impact cue marks contact. Use **Skip replay** or **Watch replay** before the host advances. Replays don't autoplay if your device requests reduced motion. Timeouts don't produce a replay.
 - The lobby host starts each round on a new mirrored layout with stone walls, crates, and pillars. Corners stay open for both teams and lanes give players ways around the obstacles. Opening pickups are mirrored in pairs; respawns are independent. A player disconnect returns the match to the lobby.
