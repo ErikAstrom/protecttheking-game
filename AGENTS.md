@@ -20,47 +20,50 @@ Agents are free — and expected — to edit this file as the project develops.
 
 ## 1. Project overview
 
-**Protect the King** is an original game where the player must keep the King alive.
+**Protect the King** is a two-team party game about defending your own king while hunting the other.
 
-- Pitch (one paragraph): `TBD`
-- Genre: `TBD` (e.g. tower defense, action, strategy, puzzle)
-- Platform: `TBD` (e.g. browser, desktop, mobile)
-- Target session length: `TBD`
+- Genre: Top-down 2D team chase/tag game.
+- Platform: Desktop browser on the same LAN as a designated Node host.
+- Rounds: 90 seconds by default, configurable.
 
 ## 2. Game design
 
 ### Core loop
-`TBD` — what the player does minute to minute.
+Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Solid units and walls create chokepoints. The prototype has a fixed, symmetric wall layout and randomized paired pickups. Procedural walls are a follow-up.
 
 ### Win / lose conditions
-- Lose: the King dies. (Details `TBD`: health, one-hit, timer?)
-- Win: `TBD` (survive N waves, reach a goal, endless with score?)
+- Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
+- A capture gives the winner one point. On timeout, the host can choose a draw or compare the number of opposing non-kings within five tiles of each king; equal counts draw.
+- First team to the configured point target wins. The lobby host starts rounds.
 
 ### Entities
 | Entity | Role | Notes |
 |---|---|---|
-| King | Must be protected | `TBD` (moves? stationary? abilities?) |
-| Player / defenders | `TBD` | |
-| Enemies | `TBD` | |
+| King | Evade opponents | Moves with the same controls; cannot push or capture. |
+| Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
+| Pickups | Modify movement or collision | Strength lasts six seconds and refreshes without stacking; speed boost and slow trap change movement pace temporarily. |
 
 ### Controls
-`TBD`
+WASD or arrows. Movement is cardinal, one tile at a time.
 
 ### Progression & difficulty
-`TBD` (waves, levels, upgrades, scoring)
+Default match: 4v4, first to 3. Lobby settings control team size, timer, arena dimensions, points to win, and timeout rule. A disconnect ends the current match and returns remaining players to the lobby.
 
 ## 3. Tech stack
 
-- Language: `TBD`
-- Engine / framework: `TBD`
-- Build tooling: `TBD`
-- Hosting / deploy: `TBD`
+- Language: TypeScript.
+- Engine / framework: React lobby and scoreboard, Canvas 2D board.
+- Build tooling: TypeScript type-checking and Vite browser build.
+- Hosting: Node.js serves the build and owns match state; `ws` handles same-origin WebSockets. In-memory, single lobby, trusted LAN only.
 
 Do not add new dependencies without approval. Prefer the standard library and the chosen engine's built-ins.
 
 ## 4. Repo structure
 
-`TBD` — fill in once the first code lands. Keep this section in sync with the actual layout.
+- `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
+- `src/rules.ts` — shared protocol, state types, and gameplay tuning.
+- `src/server.ts` — HTTP host and WebSocket command handling.
+- `src/client.tsx`, `src/style.css` — lobby, input, rendering, and scoreboard.
 
 ## 5. Coding conventions
 
@@ -73,7 +76,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 1. Read this file, then the relevant code, before changing anything.
 2. Make the smallest change that solves the task. No drive-by refactors.
-3. Run the game and any tests before calling a task done. Commands: `TBD`.
+3. Run `npm test` and `npm run build`, then `npm start` for the LAN host.
 4. Never commit secrets, API keys, or large binary assets without approval.
 5. If you make a design decision that isn't covered here, write it into this file in the same change (see section 0).
 6. Commit messages: short imperative summary line, e.g. `Add enemy spawn timer`.
@@ -86,9 +89,6 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 ## 8. Open questions
 
-- What genre and platform?
-- What does the King do — stationary, or does it move?
-- Single player only, or multiplayer?
 - Art style and asset sources?
 
 Agents: resolve these as the work requires, move the answer into the right section, and remove the question here.
@@ -97,4 +97,5 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Start with a fixed wall layout and host-authoritative LAN play to tune the capture and push loop before adding procedural walls.
 - 2026-11-19 — This spec is a living document that agents may edit — so work isn't blocked on undecided `TBD`s.

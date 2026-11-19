@@ -1,0 +1,33 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #0b1321;
+  color: #eef4ff;
+}
+body { margin: 0; }
+main { max-width: 860px; padding: 1.25rem; margin: auto; }
+h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.2rem); }
+h2 { font-size: 1.15rem; margin: 0; }
+p { margin: 0.5rem 0; }
+header { margin-bottom: 1.25rem; }
+.eyebrow { color: #ffe18a; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
+.teams, .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.team, .settings, .join, .status { background: #162438; border: 1px solid #405470; border-radius: 0.65rem; padding: 0.8rem; }
+.team h2 { display: flex; justify-content: space-between; text-transform: capitalize; }
+.team.red h2 { color: #ff737b; }
+.team.blue h2 { color: #62bcff; }
+ul { padding-left: 1.25rem; overflow-wrap: anywhere; }
+label { display: grid; gap: 0.3rem; }
+input, select, button { font: inherit; border-radius: 0.35rem; padding: 0.45rem 0.65rem; }
+input, select { background: #0b1321; border: 1px solid #566e8d; min-width: 0; }
+button { background: #ffe18a; color: #192136; border: 1px solid transparent; font-weight: 700; cursor: pointer; margin-top: 0.65rem; }
+button:disabled { opacity: 0.48; cursor: default; }
+.join, .status { margin-bottom: 0.75rem; }
+.settings, .round { margin-top: 0.75rem; }
+.fields { margin-top: 0.5rem; }
+.round, .legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; }
+canvas { width: min(100%, 70vh); height: auto; display: block; margin: 0.75rem auto; outline: 1px solid #566e8d; }
+.legend { justify-content: center; }
+.strength { color: #ffb657; }
+.speed { color: #62e4a6; }
+.slow { color: #ce99ff; }
