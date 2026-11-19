@@ -15,6 +15,9 @@ header { margin-bottom: 1.25rem; }
 .teams, .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .team, .settings, .join, .status { background: #162438; border: 1px solid #405470; border-radius: 0.65rem; padding: 0.8rem; }
 .team h2 { display: flex; justify-content: space-between; text-transform: capitalize; }
+.team h2 small { font-size: 0.72em; color: #eef4ff; text-transform: none; }
+.team.red { border-left: 4px solid #ff737b; }
+.team.blue { border-left: 4px solid #62bcff; }
 .team.red h2 { color: #ff737b; }
 .team.blue h2 { color: #62bcff; }
 ul { padding-left: 1.25rem; overflow-wrap: anywhere; }

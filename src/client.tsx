@@ -14,6 +14,7 @@ const keys = new Map<string, Direction>([
 const fields = [
   ['teamSize', 'Players per team'], ['seconds', 'Round seconds'],
   ['wins', 'Points to win'], ['size', 'Board side'], ['pickupCount', 'Pickups on board'],
+  ['portalPairs', 'Teleport pairs'],
 ] as const;
 
 function SettingsForm({ settings, send }: { settings: Settings; send: (command: Command) => void }) {
@@ -208,7 +209,7 @@ function App() {
         {TEAMS.map(team => {
           const roster = state.players.filter(candidate => candidate.team === team);
           return <div key={team} className={`team ${team}`}>
-            <h2>{team} <strong>{state.score[team]}</strong></h2>
+            <h2><span>{team} team{player?.team === team && <small> · Your team</small>}</span><strong>{state.score[team]}</strong></h2>
             <p>{roster.length}/{state.settings.teamSize} players</p>
             <ul>{roster.map(member => <li key={member.id}>
               {member.name}{member.id === id ? ' (you)' : ''}{member.king ? ' · King' : ''}{member.id === state.host ? ' · Host' : ''}
@@ -237,7 +238,13 @@ function App() {
         </p>}
         {host && state.phase === 'between' && <button onClick={() => send({ type: 'next' })}>Next round</button>}
         {host && state.phase === 'finished' && <button onClick={() => send({ type: 'reset' })}>Back to lobby</button>}
-        {player && <section className="inventory" aria-label="Your item queue">
+        {player?.king && <section className="inventory" aria-label="King sprint">
+          <strong><kbd>Space</kbd> King sprint</strong>
+          <span>{player.pace === 'speed' && player.paceUntil > state.now ? 'Active' :
+            player.sprintReadyAt > state.now ? `Recharging: ${Math.ceil((player.sprintReadyAt - state.now) / 1000)}s` : 'Ready'}</span>
+          <span className="empty-queue">Kings cannot collect pickups.</span>
+        </section>}
+        {player && !player.king && <section className="inventory" aria-label="Your item queue">
           <strong><kbd>Space</kbd> Use first item</strong>
           {player.inventory.length ? <ol aria-label="Items in pickup order">
             {player.inventory.map((kind, index) => <li key={`${player.used + index}-${kind}`} className={kind}
@@ -246,8 +253,10 @@ function App() {
             </li>)}
           </ol> : <span className="empty-queue">No items yet — move over a pickup.</span>}
         </section>}
-        <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} />
+        <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id}
+          onReplayCue={cue => { if (sound) audio.current?.cue(cue); }} />
         <p className="legend"><span>Gold crown: king</span><span>White ring: you</span>
+          <span>R / B: red / blue team</span>{state.portals.length > 0 && <span>Matching numbers: linked portals</span>}
           {ITEM_KINDS.map(kind => <span className={kind} key={kind}>{GLYPHS[kind]} {ITEMS[kind].name}</span>)}</p>
       </>}
     </>}

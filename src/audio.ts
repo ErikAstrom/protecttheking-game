@@ -1,7 +1,10 @@
-type Cue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent';
+export type ReplayCue = 'replay-start' | 'replay-impact';
+type Cue = 'pickup' | 'use' | 'trap' | 'round' | 'capture' | 'timeout' | 'urgent' | ReplayCue;
 const CUES: Record<Cue, number[]> = {
   pickup: [72, 79, 84], use: [60, 67, 76], trap: [56, 49, 44],
   round: [55, 60, 67, 72], capture: [60, 64, 67, 76], timeout: [62, 57, 55], urgent: [72, 72],
+  'replay-start': [55, 48, 41],
+  'replay-impact': [38, 74],
 };
 const TUNE = [60, 67, 69, 67, 64, 67, 62, 67, 60, 64, 67, 72, 69, 64, 62, 67,
   57, 64, 67, 64, 60, 64, 62, 64, 55, 62, 65, 67, 65, 62, 59, 62];
@@ -53,8 +56,10 @@ export class GameAudio {
 
   cue(cue: Cue) {
     if (this.context.state !== 'running') return;
+    const impact = cue === 'replay-impact';
     CUES[cue].forEach((midi, index) =>
-      this.note(midi, this.context.currentTime + 0.02 + index * 0.085, 0.16, 0.09, 'triangle', this.context.destination));
+      this.note(midi, this.context.currentTime + 0.02 + index * (impact ? 0.03 : 0.085),
+        impact ? 0.24 : 0.16, 0.09, impact && index === 0 ? 'sine' : 'triangle', this.context.destination));
   }
 
   private stopMusic() {

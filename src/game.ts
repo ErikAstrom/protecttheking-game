@@ -24,9 +24,11 @@ function fixedArena(size: number): Point[] {
 export class Game {
   readonly state: State = {
     host: null, phase: 'lobby', settings: { ...DEFAULT_SETTINGS }, score: { red: 0, blue: 0 },
-    round: 0, deadline: 0, now: 0, players: [], walls: [], pickups: [], traps: [], result: null, replay: null, notice: null,
+    round: 0, deadline: 0, now: 0, players: [], walls: [], pickups: [], traps: [], portals: [],
+    result: null, replay: null, notice: null,
   };
   private readonly inputs = new Map<string, Direction>();
+  private readonly velocities = new Map<string, Point>();
   private readonly nextMove = new Map<string, number>();
   private readonly nextPush = new Map<string, number>();
   private readonly respawns: number[] = [];
@@ -44,6 +46,7 @@ export class Game {
     players.push({
       id, name, team: red <= blue ? 'red' : 'blue', x: 0, y: 0, king: false,
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
     });
     this.state.host ??= id;
   }
@@ -52,7 +55,7 @@ export class Game {
     const index = this.state.players.findIndex(player => player.id === id);
     if (index < 0) return;
     const [player] = this.state.players.splice(index, 1);
-    this.inputs.delete(id);
+    this.input(id, null);
     this.nextMove.delete(id);
     if (this.state.host === id) this.state.host = this.state.players[0]?.id ?? null;
     if (this.state.phase !== 'lobby') this.reset(`${player?.name ?? 'A player'} disconnected; back to lobby.`);
@@ -94,9 +97,10 @@ export class Game {
   reset(notice: string | null = null): void {
     Object.assign(this.state, {
       phase: 'lobby', score: { red: 0, blue: 0 }, round: 0, deadline: 0,
-      walls: [], pickups: [], traps: [], result: null, replay: null, notice,
+      walls: [], pickups: [], traps: [], portals: [], result: null, replay: null, notice,
     });
     this.inputs.clear();
+    this.velocities.clear();
     this.nextMove.clear();
     this.nextPush.clear();
     this.respawns.length = 0;
@@ -108,20 +112,26 @@ export class Game {
   }
 
   input(id: string, direction: Direction | null): void {
-    if (direction === null || (this.state.settings.movement === 'classic' && direction.includes('-'))) this.inputs.delete(id);
+    if (direction === null || (this.state.settings.movement === 'classic' && direction.includes('-'))) {
+      this.inputs.delete(id);
+      this.velocities.delete(id);
+    }
     else if (this.state.phase === 'playing') this.inputs.set(id, direction);
   }
 
   useItem(id: string, now: number): void {
     if (this.state.phase !== 'playing' || now >= this.state.deadline) return;
     const player = this.state.players.find(candidate => candidate.id === id);
-    const kind = player?.inventory.shift();
-    if (!player || !kind) return;
+    if (!player) return;
+    if (player.king && player.sprintReadyAt > now) return;
+    const kind = player.king ? 'speed' : player.inventory.shift();
+    if (!kind) return;
     player.used++;
     if (kind === 'strength') player.strengthUntil = now + TUNING.strengthMs;
     else if (kind === 'speed') {
       player.pace = 'speed';
       player.paceUntil = now + TUNING.speedMs;
+      if (player.king) player.sprintReadyAt = player.paceUntil + TUNING.kingRechargeMs;
     } else {
       const trap = { x: player.x, y: player.y, team: player.team, expires: now + TUNING.trapLifetimeMs };
       this.state.traps.push(trap);
@@ -148,13 +158,12 @@ export class Game {
     let attemptedMove = false;
     for (const player of ordered) {
       const direction = this.inputs.get(player.id);
-      if (!direction || (this.nextMove.get(player.id) ?? 0) > now) continue;
+      if (!direction || player.recoilUntil > now || (this.nextMove.get(player.id) ?? 0) > now) continue;
       attemptedMove = true;
       const delta = DIRECTIONS[direction];
       const interval = this.moveInterval(player, now);
       if (settings.movement === 'smooth') {
-        const length = elapsed / (interval * Math.hypot(delta.x, delta.y));
-        this.moveSmooth(player, offset({ x: 0, y: 0 }, delta, length), now);
+        this.steer(player, delta, interval, elapsed, now);
       } else {
         this.move(player, delta, now, false);
         this.nextMove.set(player.id, now + this.moveInterval(player, now));
@@ -172,8 +181,8 @@ export class Game {
     const { players, pickups, traps } = this.state;
     this.replayFrames.push({
       now, pickups: pickups.slice(), traps: traps.slice(),
-      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace }) =>
-        ({ id, team, king, x, y, strengthUntil, paceUntil, pace })),
+      players: players.map(({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips }) =>
+        ({ id, team, king, x, y, strengthUntil, paceUntil, pace, recoilUntil, portalTrips })),
     });
     while ((this.replayFrames[0]?.now ?? now) < now - REPLAY.windowMs) this.replayFrames.shift();
   }
@@ -184,7 +193,10 @@ export class Game {
   }
 
   private clearEffects(player: Player): void {
-    Object.assign(player, { strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0 });
+    Object.assign(player, {
+      strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
+    });
   }
 
   private startRound(now: number): void {
@@ -200,6 +212,7 @@ export class Game {
     state.walls = fixedArena(size);
     this.blocked = new Set(state.walls.map(tileKey));
     this.inputs.clear();
+    this.velocities.clear();
     this.nextMove.clear();
     this.nextPush.clear();
     this.respawns.length = 0;
@@ -217,6 +230,18 @@ export class Game {
     }
     state.pickups = [];
     state.traps = [];
+    state.portals = [];
+    for (let index = 0; index < state.settings.portalPairs; index++) {
+      const a = this.findSpawn(point => {
+        const b = mirror(point, size);
+        return distance(point, b) >= size / 4 && this.spawnOpen(point) && this.spawnOpen(b);
+      });
+      if (!a) {
+        state.notice = 'Not all portal pairs could fit in this arena.';
+        break;
+      }
+      state.portals.push({ a, b: mirror(a, size) });
+    }
     const pairs = Math.floor(state.settings.pickupCount / 2);
     for (let index = 0; index < pairs; index++) {
       if (!this.spawnPickup(ITEM_KINDS[index % ITEM_KINDS.length], true)) {
@@ -231,31 +256,41 @@ export class Game {
   }
 
   private spawnPickup(kind?: ItemKind, paired = false): boolean {
-    const { settings, pickups, players } = this.state;
+    const { settings, pickups } = this.state;
+    const point = this.findSpawn(point => {
+      if (!this.spawnOpen(point)) return false;
+      const partner = mirror(point, settings.size);
+      return !paired || (this.spawnOpen(partner) && distance(point, partner) >= TUNING.pickupSpacing);
+    });
+    if (!point) return false;
+    const randomKind = ITEM_KINDS[Math.floor(Math.random() * ITEM_KINDS.length)] ?? 'strength';
+    const item = kind ?? randomKind;
+    pickups.push({ ...point, kind: item });
+    if (paired) pickups.push({ ...mirror(point, settings.size), kind: item });
+    return true;
+  }
+
+  private spawnOpen(point: Point): boolean {
+    const { settings, pickups, players, portals } = this.state;
+    return !this.isBlocked(point, settings.movement === 'smooth') &&
+      [...pickups, ...players, ...portals.flatMap(({ a, b }) => [a, b])]
+        .every(other => distance(other, point) >= TUNING.pickupSpacing);
+  }
+
+  private findSpawn(valid: (point: Point) => boolean): Point | undefined {
+    const { settings } = this.state;
     const width = settings.size - 4;
-    const valid = (point: Point) => !this.isBlocked(point, settings.movement === 'smooth') &&
-      [...pickups, ...players].every(other => distance(other, point) >= TUNING.pickupSpacing);
     const coordinate = () => {
       const random = Math.random() * width;
       return 2 + (settings.movement === 'smooth' ? random : Math.floor(random));
     };
-    const place = (point: Point) => {
-      if (!valid(point)) return false;
-      const partner = mirror(point, settings.size);
-      if (paired && (!valid(partner) || distance(point, partner) < TUNING.pickupSpacing)) return false;
-      const randomKind = ITEM_KINDS[Math.floor(Math.random() * ITEM_KINDS.length)] ?? 'strength';
-      const item = kind ?? randomKind;
-      pickups.push({ ...point, kind: item });
-      if (paired) pickups.push({ ...partner, kind: item });
-      return true;
-    };
     for (let attempt = 0; attempt < 64; attempt++) {
-      if (place({ x: coordinate(), y: coordinate() })) return true;
+      const point = { x: coordinate(), y: coordinate() };
+      if (valid(point)) return point;
     }
     for (let y = 2; y < width + 2; y++) {
-      for (let x = 2; x < width + 2; x++) if (place({ x, y })) return true;
+      for (let x = 2; x < width + 2; x++) if (valid({ x, y })) return { x, y };
     }
-    return false;
   }
 
   private scheduleRespawn(now: number): void {
@@ -277,16 +312,42 @@ export class Game {
     return false;
   }
 
+  private steer(player: Player, direction: Point, interval: number, elapsed: number, now: number): void {
+    if (elapsed <= 0) return;
+    const targetSpeed = 1 / interval;
+    const desired = offset({ x: 0, y: 0 }, direction, targetSpeed / Math.hypot(direction.x, direction.y));
+    const last = this.velocities.get(player.id);
+    let velocity = desired;
+    if (last) {
+      const highSpeed = Math.max(targetSpeed, Math.hypot(last.x, last.y)) > 1 / TUNING.moveMs + Number.EPSILON;
+      const retention = Math.exp(-elapsed / (highSpeed ? TUNING.smoothFastTurnMs : TUNING.smoothTurnMs));
+      velocity = {
+        x: desired.x + (last.x - desired.x) * retention,
+        y: desired.y + (last.y - desired.y) * retention,
+      };
+    }
+    const { x, y, portalTrips } = player;
+    this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);
+    if (player.portalTrips !== portalTrips || player.recoilUntil > now ||
+        (player.x === x && player.y === y)) {
+      this.velocities.delete(player.id);
+    } else {
+      this.velocities.set(player.id, { x: (player.x - x) / elapsed, y: (player.y - y) / elapsed });
+    }
+  }
+
   private moveSmooth(player: Player, delta: Point, now: number): void {
     const steps = Math.ceil(Math.hypot(delta.x, delta.y) / TUNING.smoothStep);
     if (!steps) return;
     const step = offset({ x: 0, y: 0 }, delta, 1 / steps);
+    const trips = player.portalTrips;
     for (let index = 0; index < steps && this.state.phase === 'playing'; index++) {
       if (step.x && step.y && this.isBlocked(offset(player, step), true)) {
-        if (!this.move(player, { x: step.x, y: 0 }, now, true) && this.state.phase === 'playing') {
+        if (!this.move(player, { x: step.x, y: 0 }, now, true) && this.state.phase === 'playing' && player.recoilUntil <= now) {
           this.move(player, { x: 0, y: step.y }, now, true);
         }
       } else if (!this.move(player, step, now, true)) break;
+      if (player.portalTrips !== trips || player.recoilUntil > now) break;
     }
   }
 
@@ -314,21 +375,49 @@ export class Game {
     const defender = occupants[0];
     if (defender) {
       if (occupants.length > 1 || defender.team === player.team || player.king || player.strengthUntil <= now ||
-        (smooth && (this.nextPush.get(player.id) ?? 0) > now)) return false;
+        (smooth && (this.nextPush.get(player.id) ?? 0) > now)) return this.recoil(player, delta, now, smooth);
       const steps = smooth ? Math.ceil(TUNING.pushTiles / TUNING.smoothStep) : TUNING.pushTiles;
       const step = smooth ? offset({ x: 0, y: 0 }, delta, TUNING.pushTiles / (steps * Math.hypot(delta.x, delta.y))) : delta;
       for (let index = 0; index < steps; index++) {
         const pushed = offset(defender, step);
         if (this.isBlocked(pushed, smooth) || this.occupants(pushed, defender, smooth).length) break;
-        Object.assign(defender, pushed);
-        this.enter(defender, now);
+        const teleported = this.stepTo(defender, pushed, now, smooth);
         if (smooth) this.nextPush.set(player.id, now + TUNING.smoothPushCooldownMs);
+        if (teleported) break;
       }
-      if (this.occupants(target, player, smooth).length) return false;
+      if (this.occupants(target, player, smooth).length) return this.recoil(player, delta, now, smooth);
     }
-    Object.assign(player, target);
-    this.enter(player, now);
+    this.stepTo(player, target, now, smooth);
     return true;
+  }
+
+  private recoil(player: Player, delta: Point, now: number, smooth: boolean): false {
+    player.recoilUntil = now + TUNING.recoilMs;
+    const steps = smooth ? Math.ceil(TUNING.recoilDistance / TUNING.smoothStep) : TUNING.recoilDistance;
+    const scale = -TUNING.recoilDistance / (steps * Math.hypot(delta.x, delta.y));
+    for (let index = 0; index < steps; index++) {
+      const target = offset(player, delta, scale);
+      if (this.isBlocked(target, smooth) || this.occupants(target, player, smooth).length) break;
+      if (this.stepTo(player, target, now, smooth)) break;
+    }
+    return false;
+  }
+
+  private stepTo(player: Player, target: Point, now: number, smooth: boolean): boolean {
+    let destination: Point | undefined;
+    for (const { a, b } of this.state.portals) {
+      if (this.touches(target, a) && !this.touches(player, a)) destination = b;
+      else if (this.touches(target, b) && !this.touches(player, b)) destination = a;
+      if (destination) break;
+    }
+    const teleported = !!destination && !this.occupants(destination, player, smooth).length;
+    Object.assign(player, teleported ? destination : target);
+    if (teleported) {
+      player.portalTrips++;
+      this.velocities.delete(player.id);
+    }
+    this.enter(player, now);
+    return teleported;
   }
 
   private touches(a: Point, b: Point): boolean {
@@ -336,7 +425,7 @@ export class Game {
   }
 
   private enter(player: Player, now: number): void {
-    const index = this.state.pickups.findIndex(pickup => this.touches(player, pickup));
+    const index = player.king ? -1 : this.state.pickups.findIndex(pickup => this.touches(player, pickup));
     if (index >= 0) {
       const [pickup] = this.state.pickups.splice(index, 1);
       if (pickup) {
@@ -375,6 +464,7 @@ export class Game {
     this.state.result = result;
     this.state.phase = winner && this.state.score[winner] >= this.state.settings.wins ? 'finished' : 'between';
     this.inputs.clear();
+    this.velocities.clear();
     this.replayFrames.length = 0;
   }
 }

@@ -35,17 +35,18 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 - Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
 - A capture gives the winner one point. On timeout, the host can choose a draw or compare the number of opposing non-kings within five tiles of each king; equal counts draw.
 - First team to the configured point target wins. The lobby host starts rounds.
-- After a capture, players get an instant replay of up to three seconds of server-recorded action at 75% speed. Playback is local and skippable, and it doesn't hold up the next round. Timeouts don't generate replays.
+- After a capture, players get an instant replay of up to three seconds of server-recorded action at 75% speed, with start and impact cues when sound is enabled. Playback is local and skippable and doesn't hold up the next round. Timeouts don't generate replays.
 
 ### Entities
 | Entity | Role | Notes |
 |---|---|---|
-| King | Evade opponents | Moves with the same controls; cannot push or capture. |
+| King | Evade opponents | Cannot push, capture, or collect items. Space activates a four-second sprint followed by a ten-second recharge. |
 | Non-king | Guard or hunt | Body-blocks players; an active strength boost lets the mover push enemy non-kings up to two free tiles, without chain pushes. |
 | Pickups | Modify movement or collision | Collect into an unlimited per-round FIFO queue. Strength lasts six seconds and refreshes without stacking. Speed lasts four seconds. A deployed slow trap expires after 20 seconds or on first enemy contact, slowing them for three seconds. |
+| Portals | Connect distant points | 0–4 pairs, one by default. Randomized each round. Anyone can enter from either end; an occupied exit prevents travel. |
 
 ### Controls
-WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractional world coordinates, normalized diagonals, and circular unit collisions with no chain pushes. Space activates the oldest held item.
+WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractional world coordinates, normalized diagonals, speed-dependent turn inertia, and circular unit collisions with no chain pushes. Releasing movement plants the player. On a blocked unit collision, only the mover recoils. Capture and successful strength pushes take priority. Space activates the oldest held item, or the king's sprint.
 
 ### Progression & difficulty
 Default match: Classic 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode, and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
@@ -99,6 +100,8 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Give Smooth turns more inertia at higher speed, but stop on key release so players can still plant themselves at chokepoints.
+- 2026-11-19 — Add numbered portal pairs and mover-only recoil so portals create shortcuts without weakening stationary bodyguards; give kings a rechargeable sprint instead of pickups.
 - 2026-11-19 — Record capture replays on the host so all players can see the same lead-up without affecting scoring or round transitions.
 - 2026-11-19 — Keep Classic alongside Smooth for playtest comparison; use an unlimited FIFO queue and placed traps so pickups reward timing as well as movement.
 - 2026-11-19 — Start with a fixed wall layout and host-authoritative LAN play to tune the capture and push loop before adding procedural walls.

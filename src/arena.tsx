@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReplayCue } from './audio.ts';
 import { ITEMS, REPLAY, TUNING } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 
 export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
+const PORTAL_COLORS = ['#d4adff', '#58f5e1', '#ffcf70', '#ffe6f4'];
 const WIDTH = 1000;
 const HEIGHT = 620;
 
 function draw(
-  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'walls'>, scene: ReplayFrame,
+  ctx: CanvasRenderingContext2D, board: Pick<State, 'settings' | 'walls' | 'portals'>, scene: ReplayFrame,
   next: ReplayFrame, id: string, fraction: number, time: number, replay?: CaptureReplay, impact = false,
 ) {
   const { size, movement } = board.settings;
@@ -81,6 +83,15 @@ function draw(
   text('♜', crest.x, crest.y - 2, 36, '#90c6be45');
   polygon('#ff737b24', face(-0.5, -0.5, 7, 5));
   polygon('#62bcff24', face(size - 7.5, size - 5.5, 7, 5));
+  for (const [index, pair] of board.portals.entries()) {
+    const color = PORTAL_COLORS[index] ?? PORTAL_COLORS[0] ?? '#fff';
+    for (const point of [pair.a, pair.b]) {
+      const p = project(point.x, point.y);
+      ellipse(p.x, p.y, 13, 8, '#172238', color);
+      ellipse(p.x, p.y, 17 + 2 * Math.sin(time / 300 + index), 11, `${color}26`, `${color}99`);
+      text(String(index + 1), p.x, p.y, 13, color);
+    }
+  }
 
   for (const trap of scene.traps) {
     const p = project(trap.x, trap.y);
@@ -111,20 +122,22 @@ function draw(
   }
   for (const player of scene.players) {
     const target = next.players.find(candidate => candidate.id === player.id) ?? player;
-    const x = player.x + (target.x - player.x) * fraction;
-    const y = player.y + (target.y - player.y) * fraction;
+    const blend = player.portalTrips === target.portalTrips ? fraction : 0;
+    const x = player.x + (target.x - player.x) * blend;
+    const y = player.y + (target.y - player.y) * blend;
     actors.push({ depth: y, draw: () => {
       const p = project(x, y);
       const r = Math.min(16, Math.max(6, scale * 0.53)) * (player.king ? 1.2 : 1);
       const team = COLORS[player.team];
       ellipse(p.x, p.y + 2, r * 1.26, r * 0.63, '#07171c8f',
-        player.id === id ? '#fff' : player.king ? '#ffe097' : undefined);
+        player.id === id ? '#fff' : team);
+      if (player.recoilUntil > scene.now) ellipse(p.x, p.y, r * 1.7, r * 0.88, '#ffffff20', '#ffffffaa');
       if (player.strengthUntil > scene.now || player.paceUntil > scene.now) {
         const color = player.strengthUntil > scene.now ? ITEMS.strength.color :
           player.pace === 'speed' ? ITEMS.speed.color : ITEMS.slow.color;
         ellipse(p.x, p.y, r * 1.58, r * 0.77, `${color}39`, color);
       }
-      polygon(team, [
+      polygon(player.king ? team : '#253847', [
         { x: p.x, y: p.y - r * 2.02 }, { x: p.x + r * 0.89, y: p.y - r * 1.5 },
         { x: p.x + r, y: p.y - r * 0.44 }, { x: p.x, y: p.y + r * 0.15 },
         { x: p.x - r, y: p.y - r * 0.44 }, { x: p.x - r * 0.89, y: p.y - r * 1.5 },
@@ -140,9 +153,22 @@ function draw(
         ellipse(p.x, cy - r * 0.19, r * 0.15, r * 0.18, '#7d361c');
         text(player.id === id ? 'YOUR KING' : 'KING', p.x, cy - r * 1.63, 13, '#ffe097');
       } else {
-        ellipse(p.x, p.y - r * 1.48, r * 0.61, r * 0.62, '#dce6e6', '#283c49');
+        const shoulder = p.y - r * 1.05;
+        ellipse(p.x - r * 0.73, shoulder, r * 0.34, r * 0.31, '#a2bbc7', '#263a48');
+        ellipse(p.x + r * 0.73, shoulder, r * 0.34, r * 0.31, '#a2bbc7', '#263a48');
+        polygon(team, [
+          { x: p.x - r * 0.62, y: shoulder }, { x: p.x + r * 0.62, y: shoulder },
+          { x: p.x + r * 0.47, y: p.y - r * 0.2 }, { x: p.x, y: p.y + r * 0.14 },
+          { x: p.x - r * 0.47, y: p.y - r * 0.2 },
+        ]);
+        ellipse(p.x, p.y - r * 1.6, r * 0.62, r * 0.64, '#bacfd8', '#263a48');
+        polygon('#172633', [
+          { x: p.x - r * 0.54, y: p.y - r * 1.69 }, { x: p.x + r * 0.54, y: p.y - r * 1.69 },
+          { x: p.x + r * 0.38, y: p.y - r * 1.4 }, { x: p.x - r * 0.38, y: p.y - r * 1.4 },
+        ]);
         if (player.id === id) text('YOU', p.x, p.y - r * 2.55, 13, '#fff');
       }
+      text(player.team === 'red' ? 'R' : 'B', p.x, p.y - r * 0.55, Math.max(9, r * 0.87), '#0b1321');
     } });
   }
   actors.sort((left, right) => left.depth - right.depth);
@@ -154,7 +180,8 @@ function draw(
       const start = scene.players.find(player => player.id === participant);
       if (!start) continue;
       const end = next.players.find(player => player.id === participant) ?? start;
-      const p = project(start.x + (end.x - start.x) * fraction, start.y + (end.y - start.y) * fraction);
+      const blend = start.portalTrips === end.portalTrips ? fraction : 0;
+      const p = project(start.x + (end.x - start.x) * blend, start.y + (end.y - start.y) * blend);
       ellipse(p.x, p.y + 2, Math.max(12, scale * 0.62), Math.max(7, scale * 0.34), `${color}40`, color);
       text(label, Math.max(60, Math.min(WIDTH - 60, p.x)), Math.min(HEIGHT - 14, p.y + (start.king ? 34 : 18)), 13, color);
     }
@@ -166,9 +193,11 @@ function draw(
   }
 }
 
-export function Arena({ state, id }: { state: State; id: string }) {
+export function Arena({ state, id, onReplayCue }: { state: State; id: string; onReplayCue: (cue: ReplayCue) => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const latest = useRef({ state, previous: state, received: 0 });
+  const replayCue = useRef(onReplayCue);
+  useEffect(() => { replayCue.current = onReplayCue; }, [onReplayCue]);
   const [playingReplay, setPlayingReplay] = useState(() =>
     !!state.replay && !matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
@@ -181,6 +210,7 @@ export function Arena({ state, id }: { state: State; id: string }) {
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let frame = 0;
     let started: number | undefined;
+    let hit = false;
     let index = 0;
     function render(time: number) {
       if (!ctx) return;
@@ -190,7 +220,10 @@ export function Arena({ state, id }: { state: State; id: string }) {
       const first = replay?.frames[0];
       const last = replay?.frames.at(-1);
       if (replay && first && last) {
-        started ??= time;
+        if (started === undefined) {
+          started = time;
+          replayCue.current('replay-start');
+        }
         const elapsed = time - started;
         const duration = (last.now - first.now) / REPLAY.speed;
         const at = first.now + elapsed * REPLAY.speed;
@@ -198,7 +231,11 @@ export function Arena({ state, id }: { state: State; id: string }) {
         const scene = replay.frames[index] ?? last;
         const next = replay.frames[index + 1] ?? scene;
         const fraction = smooth && next !== scene ? (at - scene.now) / (next.now - scene.now) : 0;
-        draw(ctx, state, scene, next, id, fraction, still ? 0 : at - first.now, replay, elapsed >= duration);
+        if (elapsed >= duration && !hit) {
+          hit = true;
+          replayCue.current('replay-impact');
+        }
+        draw(ctx, state, scene, next, id, fraction, still ? 0 : at - first.now, replay, hit);
         if (elapsed >= duration + REPLAY.holdMs) {
           setPlayingReplay(false);
           return;
