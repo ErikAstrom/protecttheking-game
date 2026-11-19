@@ -87,13 +87,17 @@ function SettingsForm({ settings, send }: { settings: Settings; send: (command: 
   </form>;
 }
 
+function countdownNumber(state: State) {
+  return Math.max(1, Math.ceil((roundStartsAt(state) - state.now) / 1000));
+}
+
 function RoundCountdown({ state }: { state: State }) {
   const untilStart = roundStartsAt(state) - state.now;
   const counting = state.phase === 'countdown';
   if (!counting && (state.phase !== 'playing' || -untilStart >= TUNING.roundGoMs)) return null;
   return <div className="round-countdown" role="status" aria-atomic="true">
     {counting && <small>Round starts in</small>}
-    <strong>{counting ? Math.max(1, Math.ceil(untilStart / 1000)) : 'GO!'}</strong>
+    <strong>{counting ? countdownNumber(state) : 'GO!'}</strong>
   </div>;
 }
 
@@ -254,7 +258,10 @@ function App() {
     const previous = audioPrevious.current;
     audioPrevious.current = state;
     const engine = audio.current;
-    if (!engine || !sound) return;
+    if (!engine) return;
+    if (!connected || state?.phase !== 'countdown') engine.setCountdown(null);
+    else if (sound) engine.setCountdown(countdownNumber(state));
+    if (!sound) return;
     engine.setMusic(connected && state?.phase === 'playing');
     if (!connected || !state || !previous || state === previous) return;
     if (state.phase === 'playing' && previous.phase !== 'playing') engine.cue('round');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import { GameAudio, newShotCount } from './audio.ts';
 import type { Shot } from './rules.ts';
 
@@ -23,7 +23,7 @@ class TestOscillator {
   stop(at: number) { this.stopAt = at; }
 }
 
-test('Golden Gun cues are distinct, bounded, and respect opt-in sound', async t => {
+function mockAudio(t: TestContext) {
   const oscillators: TestOscillator[] = [];
   class TestAudioContext {
     state = 'suspended';
@@ -45,7 +45,11 @@ test('Golden Gun cues are distinct, bounded, and respect opt-in sound', async t 
   }
   Object.defineProperty(globalThis, 'AudioContext', { value: TestAudioContext, configurable: true });
   t.after(() => Reflect.deleteProperty(globalThis, 'AudioContext'));
-  const audio = new GameAudio();
+  return { audio: new GameAudio(), oscillators };
+}
+
+test('Golden Gun cues are distinct, bounded, and respect opt-in sound', async t => {
+  const { audio, oscillators } = mockAudio(t);
 
   audio.cue('golden-gun-spawn');
   assert.equal(oscillators.length, 0, 'a cue must not schedule sound before opt-in');
@@ -72,4 +76,35 @@ test('Golden Gun cues are distinct, bounded, and respect opt-in sound', async t 
   await audio.mute();
   audio.cue('golden-gun-fire');
   assert.equal(oscillators.length, 0, 'a muted cue must not schedule sound');
+});
+
+test('countdown music rises once per displayed number and resets for the next round', async t => {
+  const { audio, oscillators } = mockAudio(t);
+  audio.setCountdown(3);
+  assert.equal(oscillators.length, 0);
+  await audio.enable();
+
+  const beeps = [3, 2, 1].map(beat => {
+    audio.setCountdown(beat);
+    const count = oscillators.length;
+    audio.setCountdown(beat);
+    assert.equal(oscillators.length, count, 'repeated snapshots must be silent');
+    const notes = oscillators.splice(0);
+    assert.ok(notes.length > 1, 'each beat is a musical phrase');
+    assert.ok(notes.every(note => note.stopAt < 11), 'the phrase ends before the next beat');
+    const beep = notes.find(note => note.type === 'sine' && note.stopAt - note.startAt < 0.1);
+    assert.ok(beep, 'each beat has a short beep on top of the melody');
+    return beep;
+  });
+  assert.ok(beeps[0]!.frequency.value < beeps[1]!.frequency.value &&
+    beeps[1]!.frequency.value < beeps[2]!.frequency.value);
+
+  audio.setCountdown(null);
+  assert.equal(oscillators.length, 0, 'ending or cancelling the countdown adds no notes');
+  audio.cue('round');
+  const go = oscillators.splice(0).find(note => note.type === 'sine');
+  assert.ok(go && go.frequency.value > beeps[2]!.frequency.value, 'GO has a higher beep');
+  assert.ok(go.stopAt - go.startAt > beeps[2]!.stopAt - beeps[2]!.startAt, 'GO is held longer');
+  audio.setCountdown(3);
+  assert.ok(oscillators.length > 0);
 });

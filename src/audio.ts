@@ -44,6 +44,7 @@ const TUNE = [60, 67, 69, 67, 64, 67, 62, 67, 60, 64, 67, 72, 69, 64, 62, 67,
 const BASS = [48, 48, 45, 43];
 const MUSIC_LEVEL = 0.42;
 const FANFARE_MUSIC_LEVEL = 0.09;
+const COUNTDOWN_ROOTS = [55, 52, 48];
 
 export function newShotCount(previous: readonly Shot[], current: readonly Shot[]): number {
   // Tracers persist across snapshots, and multiple shots can share a timestamp.
@@ -62,6 +63,7 @@ export class GameAudio {
   private readonly context = new AudioContext();
   private readonly music = this.context.createGain();
   private timer: number | undefined;
+  private countdownBeat: number | null = null;
 
   constructor() {
     this.music.gain.value = MUSIC_LEVEL;
@@ -102,9 +104,26 @@ export class GameAudio {
     this.timer = window.setInterval(schedule, 65);
   }
 
+  setCountdown(beat: number | null) {
+    if (beat === null) {
+      this.countdownBeat = null;
+      return;
+    }
+    if (beat === this.countdownBeat || this.context.state !== 'running') return;
+    const root = COUNTDOWN_ROOTS[beat - 1];
+    if (root === undefined) return;
+    this.countdownBeat = beat;
+    const start = this.context.currentTime + 0.02;
+    this.note(root + 24, start, 0.075, 0.12, 'sine', this.context.destination);
+    this.note(root - 12, start, 0.28, 0.10, 'sine', this.context.destination);
+    this.note(root + 12, start, 0.16, 0.08, 'triangle', this.context.destination);
+    this.note(root + 19, start + 0.12, 0.22, 0.07, 'triangle', this.context.destination);
+  }
+
   cue(cue: Cue) {
     if (this.context.state !== 'running') return;
     const start = this.context.currentTime + 0.02;
+    if (cue === 'round') this.note(84, start, 0.19, 0.12, 'sine', this.context.destination);
     if (cue === 'board-tilt') {
       this.note(35, start, 1.15, 0.13, 'triangle', this.context.destination);
       this.note(41, start + 0.12, 0.95, 0.09, 'sawtooth', this.context.destination);
