@@ -26,12 +26,12 @@ Agents are free — and expected — to edit this file as the project develops.
 - Platform: Desktop browser on the same LAN as a designated Node host.
 - Big-screen spectators use `/watch`. The read-only display shows the lobby, arena, score, timer, and replays without joining a team. The server rejects game commands on its spectator WebSocket.
 - Rounds: 90 seconds by default, configurable.
-- Theme: **Penguin world** by default — penguin teams on a floating ice floe in the ocean, hunting the other team's king penguin. **Castle arena** is still selectable. Worlds are visual only; rules are identical.
+- Theme: **Penguin world** by default — penguin teams on a floating ice floe in the ocean, hunting the other team's king penguin. **Castle arena** is still selectable. Worlds change visuals and the obstacle layout only; rules are identical.
 
 ## 2. Game design
 
 ### Core loop
-Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Each round generates a rotationally symmetric layout with bent stone walls, crates, and pillars, leaving clear spawns and connecting lanes. All obstacles are solid in both movement modes. Opening pickups form randomized mirrored pairs (with one extra if the count is odd). Collected pickups return independently in random open positions after 2.5–6.5 seconds. In Penguin world the same layout is drawn as an ice floe: walls are ice blocks, crates are snow-capped blocks, pillars are ice spires, ice terrain is black ice and quicksand is slush.
+Teams spawn in opposite corners and see the entire arena. Each team rotates its king each round; the other players can guard or hunt. Each round generates a rotationally symmetric layout, leaving clear spawns and connecting lanes. Castle arena uses dense bent stone walls, crates, and pillars (`generateArena`). Penguin world uses an open ice sheet (`generateIceSheet` in `src/icesheet.ts`): a few chunky mirrored icebergs (3–5 tiles a side, about one pair per 16 tiles of board side, so 3 pairs on the default 48 board) with at least 5 tiles of open ice between them, a 3-tile lap lane along the floe edge and 3 tiles clear around each 7×5 spawn box, leaving ~80% of the board two or more tiles from any ice. Tuning in `ICE_SHEET`; `openTiles(size, obstacles, clearance)` lists open ice for features that need empty space (e.g. water holes). All obstacles are solid in both movement modes. Opening pickups form randomized mirrored pairs (with one extra if the count is odd). Collected pickups return independently in random open positions after 2.5–6.5 seconds. In Penguin world the board is drawn as an ice floe: walls are ice blocks (plain tops, so an iceberg's blocks merge into one slab), crates are snow-capped blocks, pillars are ice spires, ice terrain is black ice and quicksand is slush.
 
 ### Win / lose conditions
 - Capture occurs on collision between a king and an enemy non-king, before any pushback. King versus king blocks without scoring.
@@ -53,7 +53,7 @@ Teams spawn in opposite corners and see the entire arena. Each team rotates its 
 WASD or arrows. Classic moves cardinally one tile at a time; Smooth uses fractional world coordinates, normalized diagonals, speed-dependent turn inertia, and circular unit collisions with no chain pushes. Releasing movement plants the player. **Ice** (the default) uses Smooth's fractional coordinates and collisions but adds momentum: holding a direction accelerates to top speed over about half a second, sideways momentum fades slowly after a turn (drift), reversing skids through zero, releasing keys glides to a stop over a couple of seconds, and sliding into a wall bounces back slightly. Physics live in `src/ice.ts` and tuning in `ICE` in `src/rules.ts`. On a blocked unit collision, only the mover recoils. Capture and successful strength pushes take priority. Space activates the oldest held item, or the king's sprint.
 
 ### Progression & difficulty
-Default match: Ice movement in Penguin world, 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world (Penguin world or Castle arena), and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
+Default match: Ice movement in Penguin world on a 48×48 board (smaller than the old 64 so walls and penguins draw about a third bigger), 4v4, first to 3, 14 on-board pickups. Lobby settings control team size, timer, arena dimensions, points to win, timeout rule, movement mode (Ice, Smooth or Classic), world (Penguin world or Castle arena), and on-board pickup count (0–40). A disconnect ends the current match and returns remaining players to the lobby.
 
 ## 3. Tech stack
 
@@ -68,7 +68,8 @@ Do not add new dependencies without approval. Prefer the standard library and th
 
 - `FEATURES.md` — shared feature/task board: ideas, claims, progress notes, done list.
 - `src/game.ts` — authoritative simulation; rule tests in `src/game.test.ts`.
-- `src/layout.ts` — procedural obstacle layouts and terrain patches.
+- `src/layout.ts` — procedural obstacle layouts (Castle walls) and terrain patches.
+- `src/icesheet.ts` — Penguin world's open ice-sheet layout and `openTiles`; tests in `src/icesheet.test.ts`. `Game` picks the layout by world unless a fixed layout is passed to its constructor.
 - `src/rules.ts` — shared protocol, state types, and gameplay tuning.
 - `src/gun.ts` — pure golden-gun shot resolution; tests in `src/gun.test.ts`. `src/gunfx.ts` draws tracers and held guns.
 - Death and respawn (`Player.respawnAt`, `Game.respawn`) are shared by anything that can take a player out of play (golden gun now; water holes next). Dead players must be skipped wherever players collide, act, or count.
@@ -85,7 +86,7 @@ Do not add new dependencies without approval. Prefer the standard library and th
 - No magic numbers for gameplay values — put tuning values (speeds, health, damage, spawn rates) in one config/constants location.
 - Formatting and linting: `TBD` (follow whatever tooling is configured once it exists).
 - Movement checks: use `isFractional(movement)` for anything about fractional coordinates (true for Smooth **and** Ice). Compare `movement === 'smooth'` only for behavior that really is Smooth-only.
-- Worlds/themes are visual only. Put world-specific drawing in its own module (like `src/penguin.ts`) with a small hook in `arena.tsx`, never game rules.
+- Worlds/themes are visual only, except that each world may have its own obstacle layout generator. Put world-specific drawing in its own module (like `src/penguin.ts`) with a small hook in `arena.tsx`, never game rules.
 
 ## 6. How agents should work here
 
@@ -127,6 +128,7 @@ Agents: resolve these as the work requires, move the answer into the right secti
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-19 — Give Penguin world its own open ice-sheet layout (few chunky icebergs) and default to a 48 board; Castle keeps the dense walls — the owner wants open ice to slide on with bigger walls and units, and the dense layout stays useful for comparison. This relaxes "worlds are visual only" to cover layouts.
 - 2026-11-19 — Golden gun aims where you last moved (no mouse aiming) and kings absorb shots — keeps controls keyboard-only and the capture-the-king goal intact; kings can shield teammates.
 - 2026-11-19 — Make Penguin world with Ice movement the default and keep Castle/Smooth/Classic selectable — the owner wants a slippery penguin game, and the other modes stay useful for playtest comparison.
 - 2026-11-19 — Give the big-screen viewer a read-only connection so observing never consumes a player slot or grants lobby controls.

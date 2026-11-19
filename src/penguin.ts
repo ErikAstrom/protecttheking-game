@@ -142,10 +142,10 @@ export function drawIceFloe(
   shape(ctx, face(size - 7.5, size - 5.5, 7, 5), '#62bcff30', '#62bcff66');
 }
 
-/** Obstacles as packed ice: walls are ice blocks, crates are snow-capped blocks, pillars are tall ice spires. */
+/** Obstacles as packed ice: walls are ice blocks (plain tops, so neighbouring blocks merge into one iceberg), crates are snow-capped blocks, pillars are tall ice spires. */
 export function drawIceBlock(ctx: CanvasRenderingContext2D, project: Project, obstacle: Obstacle, scale: number) {
   const x = obstacle.x - 0.5, y = obstacle.y - 0.5;
-  const h = Math.max(5, scale * (obstacle.kind === 'pillar' ? 1.05 : 0.6));
+  const h = Math.max(5, scale * (obstacle.kind === 'pillar' ? 1.05 : 0.8));
   const face = (fx: number, fy: number, w: number, d: number, z = 0) =>
     [project(fx, fy, z), project(fx + w, fy, z), project(fx + w, fy + d, z), project(fx, fy + d, z)];
   shape(ctx, face(x + 0.1, y + 0.3, 1.05, 1), '#5a9fb944');
@@ -162,8 +162,6 @@ export function drawIceBlock(ctx: CanvasRenderingContext2D, project: Project, ob
   if (obstacle.kind === 'crate') {
     const top = project(x + 0.5, y + 0.5, h);
     oval(ctx, top.x, top.y - 1, Math.max(3, scale * 0.5), Math.max(2, scale * 0.24), '#ffffff');
-  } else {
-    shape(ctx, face(x + 0.08, y + 0.06, 0.84, 0.42, h + 1), '#ffffff');
   }
   const shine = project(x + 0.3, y + 1, h * 0.55);
   oval(ctx, shine.x, shine.y, Math.max(1.5, scale * 0.12), Math.max(1, h * 0.25), '#ffffffaa');

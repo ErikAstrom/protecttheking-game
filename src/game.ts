@@ -3,6 +3,7 @@ import { afterSlide, iceVelocity } from './ice.ts';
 import { COMMON_ITEMS, DEFAULT_SETTINGS, DIRECTIONS, GUN, ICE, REPLAY, SURFACES, TEAMS, TUNING, isFractional, surfaceAt } from './rules.ts';
 import type { Direction, ItemKind, Obstacle, Player, Point, ReplayFrame, Result, Settings, State, Team } from './rules.ts';
 import { generateArena, generateTerrain, mirror } from './layout.ts';
+import { generateIceSheet } from './icesheet.ts';
 
 const sameTile = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -26,9 +27,10 @@ export class Game {
   private readonly replayFrames: ReplayFrame[] = [];
   private blocked = new Set<string>();
   private turn = 0;
-  private readonly layout: (size: number) => Obstacle[];
+  private readonly layout: ((size: number) => Obstacle[]) | undefined;
 
-  constructor(layout = generateArena) {
+  /** Without a fixed layout, Penguin world gets an open ice sheet and Castle arena the dense walls. */
+  constructor(layout?: (size: number) => Obstacle[]) {
     this.layout = layout;
   }
 
@@ -227,7 +229,7 @@ export class Game {
     state.notice = null;
     state.now = now;
     state.deadline = now + seconds * 1000;
-    state.obstacles = this.layout(size);
+    state.obstacles = (this.layout ?? (state.settings.world === 'penguin' ? generateIceSheet : generateArena))(size);
     state.terrain = generateTerrain(size);
     this.blocked = new Set(state.obstacles.map(tileKey));
     this.inputs.clear();

@@ -52,14 +52,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Files:** new `src/holes.ts`, `src/holes.test.ts`; hooks in `src/game.ts`, `src/rules.ts`, `src/penguin.ts`/`src/arena.tsx` (drawing). Not `src/layout.ts` (that's "Open ice sheet layout").
 - **Notes:**
 
-### Open ice sheet layout
-- **Status:** in progress — Claude (subagent), 2026-11-19 14:20
-- **Requested by:** Erik
-- **Description:** "Make walls bigger and units bigger but less walls. It should also resemble an ice sheet more, where some walls are present, but more open areas to slide around more."
-- **Files:** new `src/icesheet.ts`, `src/icesheet.test.ts`; small hooks in `src/layout.ts` (pick layout by world), `src/game.ts` (1–2 lines in the constructor/`startRound`), `src/rules.ts` (default board size only); `AGENTS.md`
-- **Notes:**
-  - 2026-11-19 — Plan: Penguin world gets its own layout of a few chunky, mirrored icebergs/ice blocks with wide open lanes; Castle keeps the dense walls. Units/walls get bigger on screen by shrinking the default board (everything scales with `914 / size`), not by changing drawing code, so this stacks with the "larger characters" claim above without touching `arena.tsx`. Water holes are NOT part of this (main session builds them in `src/holes.ts`).
-
 ### Golden Gun sound cues
 - **Status:** in progress — Copilot, 2026-11-19 13:06
 - **Requested by:** Playtest feedback
@@ -72,6 +64,16 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 _No open items._
 
 ## Done
+
+### Open ice sheet layout
+- **Status:** done — 2026-11-19
+- **Requested by:** Erik
+- **Description:** "Make walls bigger and units bigger but less walls. It should also resemble an ice sheet more, where some walls are present, but more open areas to slide around more."
+- **Files:** new `src/icesheet.ts`, `src/icesheet.test.ts`; small hooks in `src/game.ts` (1–2 lines in the constructor/`startRound`), `src/rules.ts` (default board size only), `src/penguin.ts` (block tops); `AGENTS.md`
+- **Notes:**
+  - 2026-11-19 — Plan: Penguin world gets its own layout of a few chunky, mirrored icebergs/ice blocks with wide open lanes; Castle keeps the dense walls. Units/walls get bigger on screen by shrinking the default board (everything scales with `914 / size`), not by changing drawing code, so this stacks with the "larger characters" claim above without touching `arena.tsx`. Water holes are NOT part of this (main session builds them in `src/holes.ts`).
+  - 2026-11-19 — "Bigger units" is covered by Copilot's "Random-exit teleporters and larger characters" (characters 1.25×); I didn't change penguin drawing or collision radius (`smoothRadius` stays 0.44).
+  - 2026-11-19 — Done in `Add open ice sheet layout for Penguin world`. Penguin world now uses `generateIceSheet` (`src/icesheet.ts`): 3 mirrored pairs of 3–5-tile icebergs on the default board (~90 tiles vs ~125 for the castle layout at the same size, ~170 on the old 64 default), ≥5 tiles of ice between bergs, 3-tile edge lane and spawn clearance. Default board 64 → 48, so walls and penguins draw 1.33× bigger (stacks with Copilot's 1.25×). Wall blocks lost their per-tile highlight and are a bit taller so bergs read as single slabs. Castle arena keeps the dense walls; Classic/Smooth work with both. Open space for water holes: ~80% of tiles are ≥2 tiles from any ice (`openTiles(size, obstacles, 2, spawnMargin)` lists them). 4 tests in `src/icesheet.test.ts`. Checked both worlds with 4 bots on a local server in the /watch viewer.
 
 ### Golden gun
 - **Status:** done — 2026-11-19

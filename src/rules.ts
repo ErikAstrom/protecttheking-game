@@ -49,7 +49,7 @@ export const LIMITS = {
   teamSize: { min: 2, max: 8, initial: 4 },
   seconds: { min: 10, max: 600, initial: 90 },
   wins: { min: 1, max: 20, initial: 3 },
-  size: { min: 32, max: 256, initial: 64 },
+  size: { min: 32, max: 256, initial: 48 },
   pickupCount: { min: 0, max: 40, initial: 14 },
   portalCount: { min: 0, max: 8, initial: 4 },
 } as const;
