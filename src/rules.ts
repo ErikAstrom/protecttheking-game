@@ -24,11 +24,12 @@ export const ITEMS = {
   strength: { name: 'Strength', color: '#ffc46e' },
   speed: { name: 'Speed', color: '#66ebbf' },
   slow: { name: 'Slow trap', color: '#e3a8ff' },
+  vault: { name: 'Vault', color: '#8de8ff' },
   gun: { name: 'Golden gun', color: '#ffd23f' },
 } as const;
-export const ITEM_KINDS = ['strength', 'speed', 'slow', 'gun'] as const;
 /** Items used for opening pickups and ordinary respawns. The golden gun is rare and spawns separately (see GUN). */
-export const COMMON_ITEMS = ['strength', 'speed', 'slow'] as const;
+export const COMMON_ITEMS = ['strength', 'speed', 'slow', 'vault'] as const;
+export const ITEM_KINDS = [...COMMON_ITEMS, 'gun'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 export type Pickup = Point & { kind: ItemKind };
 export type Trap = Point & { team: Team; expires: number };
@@ -77,6 +78,7 @@ export const TUNING = {
   smoothTurnMs: 70, smoothFastTurnMs: 120,
   pickupRadius: 0.9, pickupSpacing: 2, respawnMinMs: 2500, respawnMaxMs: 6500,
   trapLifetimeMs: 20000,
+  vaultMs: 5000, vaultWallTiles: 6, vaultPlayerTiles: 2, vaultScanStep: 0.05,
   kingRechargeMs: 10000, recoilDistance: 1, recoilMs: 180,
 };
 // Penguin world ice physics (used by src/ice.ts). Velocities in tiles/ms.
@@ -129,10 +131,11 @@ export type Player = Point & {
   bot?: true;
   paceUntil: number; pace: 'speed' | 'slow' | null;
   inventory: ItemKind[]; collected: number; used: number; tripped: number;
+  vaultUntil: number;
   sprintReadyAt: number; recoilUntil: number; portalTrips: number;
   /** Last movement direction; golden gun shots go this way. */
   facing: Point;
-  /** Shots left on the golden gun at the front of the queue (0 = not started yet). */
+  /** Shots left on the held golden gun (0 = not started yet). */
   gunAmmo: number;
   /** While > 0 the player is dead and respawns at this time. */
   respawnAt: number;

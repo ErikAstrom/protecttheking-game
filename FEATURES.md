@@ -45,13 +45,6 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
-### Single item slot and Vault pickup
-- **Status:** in progress — Copilot, 2026-11-19 13:16
-- **Requested by:** Playtest feedback
-- **Description:** Keep the held item when touching another pickup. Add a Vault item that skips one wall or player on the next eligible collision within five seconds of activation.
-- **Files:** `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/arena.tsx`, new focused item tests
-- **Notes:** Require a clear landing; preserve king capture. Coordinate collision and landing checks with Water holes in the ice.
-
 ## Open
 
 ### Wire golden gun and splash sounds
@@ -99,6 +92,13 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 - **Description:** Give hosts an option to add bots to the smaller team without moving humans. Keep kings human and have bots guard or hunt using the normal game rules.
 - **Files:** `src/bots.ts`, `src/bots.test.ts`, `src/rules.ts`, `src/game.ts`, `src/client.tsx`
 - **Notes:** Completed in `Balance uneven teams with bots`. Verified in the browser that 3v2 starts as 3v3 with a human king and that the bot is removed on return to the lobby.
+
+### Single item slot and Vault pickup
+- **Status:** done — 2026-11-19
+- **Requested by:** Playtest feedback
+- **Description:** Keep the held item when touching another pickup. Add a Vault item that skips one wall or player on the next eligible collision within five seconds of activation.
+- **Files:** `src/game.ts`, `src/rules.ts`, `src/client.tsx`, `src/arena.tsx`, `src/vault.test.ts`
+- **Notes:** Implemented in `Limit pickups to one slot and add Vault`. Verified all three movement modes, blocked and wet landings, expiry, king capture, and Golden Gun ammo.
 
 ### Water holes in the ice
 - **Status:** done — 2026-11-19

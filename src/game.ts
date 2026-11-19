@@ -19,7 +19,7 @@ function makePlayer(id: string, name: string, team: Team): Player {
   return {
     id, name, team, x: 0, y: 0, king: false,
     strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-    sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0,
+    sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0,
     facing: homeFacing(team), gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
   };
 }
@@ -153,6 +153,7 @@ export class Game {
     if (!kind) return;
     player.used++;
     if (kind === 'strength') player.strengthUntil = now + TUNING.strengthMs;
+    else if (kind === 'vault') player.vaultUntil = now + TUNING.vaultMs;
     else if (kind === 'speed') {
       player.pace = 'speed';
       player.paceUntil = now + TUNING.speedMs;
@@ -246,7 +247,7 @@ export class Game {
   private clearEffects(player: Player): void {
     Object.assign(player, {
       strengthUntil: 0, paceUntil: 0, pace: null, inventory: [], collected: 0, used: 0, tripped: 0,
-      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
+      sprintReadyAt: 0, recoilUntil: 0, portalTrips: 0, vaultUntil: 0, gunAmmo: 0, respawnAt: 0, outCause: null, kills: 0, deaths: 0,
       facing: homeFacing(player.team),
     });
   }
@@ -392,11 +393,13 @@ export class Game {
         y: desired.y + (last.y - desired.y) * retention,
       };
     }
-    const { x, y, portalTrips } = player;
+    const { x, y, portalTrips, vaultUntil } = player;
     this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);
-    if (player.portalTrips !== portalTrips || player.recoilUntil > now ||
+    if (!alive(player) || player.portalTrips !== portalTrips || player.recoilUntil > now ||
         (player.x === x && player.y === y)) {
       this.velocities.delete(player.id);
+    } else if (player.vaultUntil !== vaultUntil) {
+      this.velocities.set(player.id, velocity);
     } else {
       this.velocities.set(player.id, { x: (player.x - x) / elapsed, y: (player.y - y) / elapsed });
     }
@@ -408,11 +411,11 @@ export class Game {
     if (elapsed <= 0 || (!direction && !last.x && !last.y)) return false;
     const topSpeed = ICE.topSpeedScale / this.moveInterval(player, now);
     const velocity = iceVelocity(last, direction, topSpeed, elapsed);
-    const { x, y, portalTrips } = player;
+    const { x, y, portalTrips, vaultUntil } = player;
     this.moveSmooth(player, offset({ x: 0, y: 0 }, velocity, elapsed), now);
     if (!alive(player)) return true;
     if (player.recoilUntil > now) this.velocities.delete(player.id);
-    else if (player.portalTrips !== portalTrips) this.velocities.set(player.id, velocity);
+    else if (player.portalTrips !== portalTrips || player.vaultUntil !== vaultUntil) this.velocities.set(player.id, velocity);
     else {
       const next = afterSlide(velocity, { x: player.x - x, y: player.y - y }, elapsed);
       if (next.x || next.y) this.velocities.set(player.id, next);
@@ -425,18 +428,19 @@ export class Game {
     const steps = Math.ceil(Math.hypot(delta.x, delta.y) / TUNING.smoothStep);
     if (!steps) return;
     const step = offset({ x: 0, y: 0 }, delta, 1 / steps);
-    const trips = player.portalTrips;
+    const { portalTrips, vaultUntil } = player;
     for (let index = 0; index < steps && this.state.phase === 'playing' && alive(player); index++) {
       if (step.x && step.y && this.isBlocked(offset(player, step), true)) {
+        if (this.tryVault(player, step, now, true)) break;
         if (!this.move(player, { x: step.x, y: 0 }, now, true) && this.state.phase === 'playing' && player.recoilUntil <= now) {
           this.move(player, { x: 0, y: step.y }, now, true);
         }
       } else if (!this.move(player, step, now, true)) break;
-      if (player.portalTrips !== trips || player.recoilUntil > now) break;
+      if (player.portalTrips !== portalTrips || player.vaultUntil !== vaultUntil || player.recoilUntil > now) break;
     }
   }
 
-  /** Fires one golden gun shot in the player's facing direction. The gun leaves the queue after its last shot. */
+  /** Fires one golden gun shot in the player's facing direction. Its last shot frees the item slot. */
   private fireGun(player: Player, now: number): void {
     player.gunAmmo = (player.gunAmmo || GUN.shots) - 1;
     if (!player.gunAmmo) {
@@ -462,7 +466,7 @@ export class Game {
     victim.deaths++;
     victim.respawnAt = now + ms;
     victim.outCause = cause;
-    Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0 });
+    Object.assign(victim, { strengthUntil: 0, paceUntil: 0, pace: null, recoilUntil: 0, vaultUntil: 0 });
     this.velocities.delete(victim.id);
   }
 
@@ -491,7 +495,7 @@ export class Game {
 
   private move(player: Player, delta: Point, now: number, smooth: boolean): boolean {
     const target = offset(player, delta);
-    if (this.isBlocked(target, smooth)) return false;
+    if (this.isBlocked(target, smooth)) return this.tryVault(player, delta, now, smooth);
     const occupants = this.occupants(target, player, smooth);
     const opponent = occupants.find(candidate => candidate.team !== player.team && candidate.king !== player.king);
     if (opponent) {
@@ -508,7 +512,10 @@ export class Game {
     const defender = occupants[0];
     if (defender) {
       if (occupants.length > 1 || defender.team === player.team || player.king || player.strengthUntil <= now ||
-        (smooth && (this.nextPush.get(player.id) ?? 0) > now)) return this.recoil(player, delta, now, smooth);
+        (smooth && (this.nextPush.get(player.id) ?? 0) > now)) {
+        return (occupants.length === 1 && this.tryVault(player, delta, now, smooth, defender)) ||
+          this.recoil(player, delta, now, smooth);
+      }
       const steps = smooth ? Math.ceil(TUNING.pushTiles / TUNING.smoothStep) : TUNING.pushTiles;
       const step = smooth ? offset({ x: 0, y: 0 }, delta, TUNING.pushTiles / (steps * Math.hypot(delta.x, delta.y))) : delta;
       for (let index = 0; index < steps; index++) {
@@ -518,10 +525,38 @@ export class Game {
         if (smooth) this.nextPush.set(player.id, now + TUNING.smoothPushCooldownMs);
         if (teleported || !alive(defender)) break;
       }
-      if (this.occupants(target, player, smooth).length) return this.recoil(player, delta, now, smooth);
+      const remaining = this.occupants(target, player, smooth);
+      if (remaining.length) {
+        return (remaining.length === 1 && remaining[0] === defender && this.tryVault(player, delta, now, smooth, defender)) ||
+          this.recoil(player, delta, now, smooth);
+      }
     }
     this.stepTo(player, target, now, smooth);
     return true;
+  }
+
+  private tryVault(player: Player, delta: Point, now: number, smooth: boolean, defender?: Player): boolean {
+    if (player.vaultUntil <= now) return false;
+    const length = Math.hypot(delta.x, delta.y);
+    const stride = smooth ? TUNING.vaultScanStep : 1;
+    const limit = defender ? TUNING.vaultPlayerTiles : TUNING.vaultWallTiles;
+    const step = offset({ x: 0, y: 0 }, delta, stride / length);
+    const contact = offset(player, delta);
+    for (let index = 1; length + index * stride <= limit; index++) {
+      const landing = offset(contact, step, index);
+      const occupants = this.occupants(landing, player, smooth);
+      if (occupants.some(other => other !== defender)) return false;
+      if (this.isBlocked(landing, smooth)) {
+        if (defender) return false;
+        continue;
+      }
+      if (occupants.length) continue;
+      if (this.state.holes.some(hole => distance(hole, landing) <= hole.radius)) return false;
+      player.vaultUntil = 0;
+      this.stepTo(player, landing, now, smooth);
+      return true;
+    }
+    return false;
   }
 
   private recoil(player: Player, delta: Point, now: number, smooth: boolean): false {
@@ -555,7 +590,7 @@ export class Game {
   }
 
   private enter(player: Player, now: number): void {
-    const index = player.king ? -1 : this.state.pickups.findIndex(pickup => this.touches(player, pickup));
+    const index = player.king || player.inventory.length ? -1 : this.state.pickups.findIndex(pickup => this.touches(player, pickup));
     if (index >= 0) {
       const [pickup] = this.state.pickups.splice(index, 1);
       if (pickup) {

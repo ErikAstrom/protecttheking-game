@@ -175,6 +175,7 @@ function App() {
   }, []);
 
   const player = state?.players.find(candidate => candidate.id === id);
+  const heldItem = player?.inventory[0];
   const canMove = !!player && state?.phase === 'playing' && connected;
   const smooth = !!state && isFractional(state.settings.movement);
   const penguin = state?.settings.world === 'penguin';
@@ -252,8 +253,7 @@ function App() {
       const old = previous.players.find(member => member.id === id);
       if (local && old) {
         if (local.collected > old.collected) {
-          const pickedUpGun = local.inventory.filter(item => item === 'gun').length >
-            old.inventory.filter(item => item === 'gun').length;
+          const pickedUpGun = local.inventory[0] === 'gun';
           engine.cue(pickedUpGun ? 'golden-gun-pickup' : 'pickup');
         }
         if (local.used > old.used && old.inventory[0] !== 'gun') engine.cue('use');
@@ -367,14 +367,15 @@ function App() {
             player.sprintReadyAt > state.now ? `Recharging: ${Math.ceil((player.sprintReadyAt - state.now) / 1000)}s` : 'Ready'}</span>
           <span className="empty-queue">Kings cannot collect pickups.</span>
         </section>}
-        {player && !player.king && <section className="inventory" aria-label="Your item queue">
-          <strong><kbd>Space</kbd> {player.inventory[0] === 'gun' ? 'Shoot (where you last moved)' : 'Use first item'}</strong>
-          {player.inventory.length ? <ol aria-label="Items in pickup order">
-            {player.inventory.map((kind, index) => <li key={`${player.used + index}-${kind}`} className={kind}
-              title={ITEMS[kind].name} aria-label={`${index === 0 ? 'Next: ' : ''}${ITEMS[kind].name}`}>
-              <span aria-hidden="true">{GLYPHS[kind]}</span>{index === 0 && <span>{ITEMS[kind].name}{kind === 'gun' ? ` · ${player.gunAmmo || GUN.shots} shots` : ''}</span>}
-            </li>)}
-          </ol> : <span className="empty-queue">No items yet — move over a pickup.</span>}
+        {player && !player.king && <section className="inventory" aria-label="Your item slot">
+          <strong><kbd>Space</kbd> {heldItem === 'gun' ? 'Shoot (where you last moved)' : 'Use item'}</strong>
+          {heldItem ? <ol>
+            <li className={heldItem}>
+              <span aria-hidden="true">{GLYPHS[heldItem]}</span>
+              <span>{ITEMS[heldItem].name}{heldItem === 'gun' ? ` · ${player.gunAmmo || GUN.shots} shots` : ''}</span>
+            </li>
+          </ol> : <span className="empty-queue">Empty slot — move over a pickup.</span>}
+          {player.vaultUntil > state.now && <span>Vault ready: {Math.ceil((player.vaultUntil - state.now) / 1000)}s</span>}
         </section>}
         <div className="round-board">
           <Arena key={state.replay ? `capture-${state.round}` : 'live'} state={state} id={id} onReplayCue={onReplayCue} />

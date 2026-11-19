@@ -5,7 +5,7 @@ import { drawHoles, drawIceBlock, drawSplashes, drawIceFloe, drawPenguin, drawPe
 import { ITEMS, REPLAY, TUNING, isFractional } from './rules.ts';
 import type { CaptureReplay, ItemKind, Point, ReplayFrame, State } from './rules.ts';
 
-export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', gun: '⌖' };
+export const GLYPHS: Record<ItemKind, string> = { strength: '✊', speed: '⚡', slow: '✥', vault: '↥', gun: '⌖' };
 const COLORS = { red: '#ff737b', blue: '#62bcff' };
 const PORTAL_COLOR = '#d4adff';
 const CHARACTER_SCALE = 1.25;

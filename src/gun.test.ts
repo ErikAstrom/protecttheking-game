@@ -56,15 +56,14 @@ function match(movement: Movement = 'classic') {
 
 test('the golden gun fires three shots, then leaves the item queue', () => {
   const { game, red, blue } = match();
-  red.inventory.push('speed');
   game.useItem(red.id, 1100);
   assert.equal(blue.respawnAt, 1100 + GUN.respawnMs, 'the enemy is shot');
   assert.deepEqual([red.kills, blue.deaths, red.gunAmmo], [1, 1, 2]);
-  assert.deepEqual(red.inventory, ['gun', 'speed'], 'the gun stays at the front while it has shots');
+  assert.deepEqual(red.inventory, ['gun'], 'the gun occupies the slot while it has shots');
   assert.equal(game.state.shots.length, 1);
   game.useItem(red.id, 1200);
   game.useItem(red.id, 1300);
-  assert.deepEqual(red.inventory, ['speed'], 'used up after three shots');
+  assert.deepEqual(red.inventory, [], 'the final shot frees the slot');
   assert.equal(red.gunAmmo, 0);
   assert.equal(game.state.shots.length, 3);
 });

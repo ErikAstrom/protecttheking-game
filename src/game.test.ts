@@ -171,7 +171,7 @@ test('strength pickups refresh a six-second effect that expires at the deadline'
   assert.equal(blue.x, 13);
 });
 
-test('pickups replenish to the configured count and activate in pickup order', () => {
+test('a full item slot leaves pickups on the board until collected', () => {
   const { game, red } = setup({ pickupCount: 2 });
   assert.equal(game.state.pickups.length, 2);
   game.state.pickups = [{ x: 11, y: 10, kind: 'speed' }, { x: 12, y: 10, kind: 'strength' }];
@@ -179,19 +179,23 @@ test('pickups replenish to the configured count and activate in pickup order', (
   game.input(red.id, 'right');
   game.tick(1100);
   game.tick(1200);
-  game.input(red.id, null);
-  assert.deepEqual(red.inventory, ['speed', 'strength']);
-  assert.equal(game.state.pickups.length, 0);
+  assert.deepEqual(red.inventory, ['speed']);
+  assert.deepEqual(game.state.pickups, [{ x: 12, y: 10, kind: 'strength' }]);
   assert.equal(red.pace, null);
   game.useItem(red.id, 1200);
-  assert.deepEqual(red.inventory, ['strength']);
+  assert.deepEqual(red.inventory, []);
   assert.equal(red.pace, 'speed');
   assert.equal(red.strengthUntil, 0);
-  game.useItem(red.id, 1201);
-  assert.equal(red.strengthUntil, 1201 + TUNING.strengthMs);
+  game.tick(1300);
+  game.input(red.id, 'left');
+  game.tick(1400);
+  game.input(red.id, null);
+  assert.deepEqual(red.inventory, ['strength']);
+  game.useItem(red.id, 1400);
+  assert.equal(red.strengthUntil, 1400 + TUNING.strengthMs);
   game.tick(1100 + TUNING.respawnMinMs - 1);
   assert.equal(game.state.pickups.length, 0);
-  game.tick(1200 + TUNING.respawnMaxMs);
+  game.tick(1400 + TUNING.respawnMaxMs);
   assert.equal(game.state.pickups.length, 2);
   const [first, second] = game.state.pickups;
   assert.ok(first && second && Math.hypot(first.x - second.x, first.y - second.y) >= TUNING.pickupSpacing);
