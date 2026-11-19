@@ -45,6 +45,12 @@ Add an entry at the bottom of **Open** using the template below. A rough one-lin
 
 ## In progress
 
+### Denser Rooms & Corridors layouts
+- **Status:** in progress — Copilot, 2026-11-19 14:08
+- **Requested by:** Playtest feedback
+- **Description:** Add more randomized rooms and distinct corridors while keeping the raised walkway and clear routes.
+- **Files:** `src/rooms.ts`, Rooms and walkway tests, gameplay docs.
+
 ## Open
 
 ### Wire golden gun and splash sounds
